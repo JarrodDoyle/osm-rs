@@ -92,7 +92,7 @@ pub struct sScrMsg {
 #[interface("D00000D0-7B50-129F-8348-00AA00A82B51")]
 pub unsafe trait IScript: IUnknown {
     fn GetClassName(&self) -> *const c_char;
-    fn ReceiveMessage(&self, msg: *mut sScrMsg, parms: *mut sMultiParm, action: i32) -> HRESULT;
+    fn ReceiveMessage(&self, msg: &mut sScrMsg, parms: &mut sMultiParm, action: i32) -> HRESULT;
 }
 
 #[interface("CF0000CF-7B4F-129E-8348-00AA00A82B51")]
@@ -105,25 +105,25 @@ pub unsafe trait IScriptMan: IUnknown {
     fn AddModule(&self, name: *const c_char) -> HRESULT;
     fn RemoveModule(&self, name: *const c_char) -> HRESULT;
     fn ClearModules(&self) -> HRESULT;
-    fn ExposeService(&self, service: *mut IUnknown, guid: *const GUID) -> HRESULT;
-    fn GetService(&self, guid: *const GUID) -> *mut IUnknown;
-    fn GetFirstClass(&self, class: *mut u32) -> *const sScrClassDesc;
-    fn GetNextClass(&self, class: *mut u32) -> *const sScrClassDesc;
-    fn EndClassIter(&self, iter: *mut u32);
+    fn ExposeService(&self, service: IUnknown, guid: *const GUID) -> HRESULT;
+    fn GetService(&self, guid: &GUID) -> IUnknown;
+    fn GetFirstClass(&self, class: *mut c_uint) -> *const sScrClassDesc;
+    fn GetNextClass(&self, class: *mut c_uint) -> *const sScrClassDesc;
+    fn EndClassIter(&self, iter: *mut c_uint);
     fn GetClass(&self, name: *const c_char) -> *const sScrClassDesc;
-    fn SetObjScripts(&self, obj_id: i32, names: *mut *const c_char, len: u32) -> HRESULT;
-    fn ForgetObj(&self, obj_id: i32) -> HRESULT;
+    fn SetObjScripts(&self, obj_id: c_int, names: *mut *const c_char, len: c_uint) -> HRESULT;
+    fn ForgetObj(&self, obj_id: c_int) -> HRESULT;
     fn ForgetAllObjs(&self) -> HRESULT;
-    fn WantsMessage(&self, obj_id: i32, msg_name: *const c_char) -> BOOL;
+    fn WantsMessage(&self, obj_id: c_int, msg_name: *const c_char) -> BOOL;
     fn SendMessage(&self, msg: *mut sScrMsg, parms: *mut sMultiParm) -> HRESULT;
-    fn KilTimedMessage(&self, msg_id: u32);
-    fn PumpMessages(&self) -> i32;
+    fn KilTimedMessage(&self, msg_id: c_uint);
+    fn PumpMessages(&self) -> c_int;
     fn PostMessage(&self, msg: *mut sScrMsg);
-    fn SetTimedMessage(&self, msg: *mut sScrMsg, time: c_ulong, kind: i32) -> c_uint;
+    fn SetTimedMessage(&self, msg: *mut sScrMsg, time: c_ulong, kind: c_int) -> c_uint;
     fn SendMessage2(
         &self,
-        from: i32,
-        to: i32,
+        from: c_int,
+        to: c_int,
         msg_name: *const c_char,
         parms1: *const sMultiParm,
         parms2: *const sMultiParm,
@@ -131,8 +131,8 @@ pub unsafe trait IScriptMan: IUnknown {
     ) -> sMultiParm;
     fn PostMessage2(
         &self,
-        from: i32,
-        to: i32,
+        from: c_int,
+        to: c_int,
         msg_name: *const c_char,
         parms1: *const sMultiParm,
         parms2: *const sMultiParm,
@@ -141,35 +141,35 @@ pub unsafe trait IScriptMan: IUnknown {
     );
     fn SetTimedMessage2(
         &self,
-        to: i32,
+        to: c_int,
         msg_name: *const c_char,
         time: c_ulong,
-        kind: i32,
+        kind: c_int,
         parms: *const sMultiParm,
     ) -> c_uint;
     fn IsScriptDataSet(&self, tag: *const sScrDatumTag) -> BOOL;
     fn GetScriptData(&self, tag: *const sScrDatumTag, parms: *mut sMultiParm) -> HRESULT;
     fn SetScriptData(&self, tag: *const sScrDatumTag, parms: *const sMultiParm) -> HRESULT;
     fn ClearScriptData(&self, tag: *const sScrDatumTag, parms: *mut sMultiParm) -> HRESULT;
-    fn AddTrace(&self, obj_id: i32, name: *const c_char, unk1: i32, unk2: i32) -> HRESULT;
-    fn RemoveTrace(&self, obj_id: i32, name: *const c_char) -> HRESULT;
-    fn GetTraceLine(&self, line: i32) -> BOOL;
-    fn SetTraceLine(&self, line: i32, on: BOOL);
-    fn GetTraceLineMask(&self) -> i32;
-    fn SetTraceLineMask(&self, mask: i32);
+    fn AddTrace(&self, obj_id: c_int, name: *const c_char, unk1: c_int, unk2: c_int) -> HRESULT;
+    fn RemoveTrace(&self, obj_id: c_int, name: *const c_char) -> HRESULT;
+    fn GetTraceLine(&self, line: c_int) -> BOOL;
+    fn SetTraceLine(&self, line: c_int, on: BOOL);
+    fn GetTraceLineMask(&self) -> c_int;
+    fn SetTraceLineMask(&self, mask: c_int);
     fn GetFirstTrace(&self, iter: *mut c_uint) -> *const sScrTrace;
     fn GetNextTrace(&self, iter: *mut c_uint) -> *const sScrTrace;
     fn EndTraceIter(&self, iter: *mut c_uint);
-    fn SaveLoad(&self, func: *mut i32, ctx: *mut c_void, loading: BOOL) -> HRESULT;
+    fn SaveLoad(&self, func: *mut c_int, ctx: *mut c_void, loading: BOOL) -> HRESULT;
     fn PostLoad(&self);
 }
 
 #[interface("D40000D4-7B54-12A3-8348-00AA00A82B51")]
 pub unsafe trait IScriptModule: IUnknown {
     fn GetName(&self) -> *const c_char;
-    fn GetFirstClass(&self, iter: *mut c_uint) -> *const sScrClassDesc;
-    fn GetNextClass(&self, iter: *mut c_uint) -> *const sScrClassDesc;
-    fn EndClassIter(&self, iter: *mut c_uint);
+    fn GetFirstClass(&self, iter: &mut c_uint) -> *const sScrClassDesc;
+    fn GetNextClass(&self, iter: &mut c_uint) -> *const sScrClassDesc;
+    fn EndClassIter(&self, iter: &mut c_uint);
 }
 
 #[implement(IScriptModule)]
@@ -183,7 +183,7 @@ impl IScriptModule_Impl for TestScriptModule_Impl {
         self.name.as_ptr()
     }
 
-    unsafe fn GetFirstClass(&self, iter: *mut c_uint) -> *const sScrClassDesc {
+    unsafe fn GetFirstClass(&self, iter: &mut c_uint) -> *const sScrClassDesc {
         println!("Getting first script class!");
 
         unsafe {
@@ -201,18 +201,16 @@ impl IScriptModule_Impl for TestScriptModule_Impl {
         null()
     }
 
-    unsafe fn GetNextClass(&self, iter: *mut c_uint) -> *const sScrClassDesc {
-        unsafe {
-            *iter += 1;
-            if *iter < self.classes.len() as u32 {
-                return &self.classes[*iter as usize];
-            }
+    unsafe fn GetNextClass(&self, iter: &mut c_uint) -> *const sScrClassDesc {
+        *iter += 1;
+        if *iter < self.classes.len() as u32 {
+            return &self.classes[*iter as usize];
         }
 
         null()
     }
 
-    unsafe fn EndClassIter(&self, _: *mut c_uint) {}
+    unsafe fn EndClassIter(&self, _: &mut c_uint) {}
 }
 
 #[implement(IScript)]
@@ -237,11 +235,9 @@ impl IScript_Impl for TestScript_Impl {
         CString::from_str("TestScript").unwrap().into_raw()
     }
 
-    unsafe fn ReceiveMessage(&self, msg: *mut sScrMsg, _: *mut sMultiParm, _: i32) -> HRESULT {
+    unsafe fn ReceiveMessage(&self, msg: &mut sScrMsg, _: &mut sMultiParm, _: i32) -> HRESULT {
         println!("TestScript::ReceiveMessage");
-        unsafe {
-            dbg!(&*msg);
-        }
+        dbg!(msg);
         HRESULT(1)
     }
 }
@@ -249,7 +245,7 @@ impl IScript_Impl for TestScript_Impl {
 #[unsafe(no_mangle)]
 unsafe extern "stdcall" fn ScriptModuleInit(
     name: *const c_char,
-    _: *mut IScriptMan,
+    script_manager: IScriptMan,
     _: *mut i32,
     _: *mut IMalloc,
     out_mod: *mut *mut c_void,
