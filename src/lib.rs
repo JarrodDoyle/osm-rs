@@ -1,3 +1,5 @@
+mod services;
+
 use std::{
     ffi::{CStr, CString, c_char, c_int, c_uchar, c_uint, c_ulong},
     os::raw::c_void,
@@ -6,6 +8,8 @@ use std::{
 };
 
 use windows::{Win32::System::Com::IMalloc, core::*};
+
+use crate::services::{IDebugService, IVersionService};
 
 #[repr(C)]
 #[derive(Debug, Copy, Clone)]
@@ -250,9 +254,43 @@ unsafe extern "stdcall" fn ScriptModuleInit(
     _: *mut IMalloc,
     out_mod: *mut *mut c_void,
 ) -> i32 {
-    println!("hello");
-
     unsafe {
+        let version_service = script_manager
+            .GetService(&IVersionService::IID)
+            .cast::<IVersionService>()
+            .unwrap();
+        let debug_service = script_manager
+            .GetService(&IDebugService::IID)
+            .cast::<IDebugService>()
+            .unwrap();
+
+        dbg!(version_service.IsEditor());
+
+        let mut major = 0;
+        let mut minor = 0;
+        version_service.GetVersion(&mut major, &mut minor);
+        dbg!(major, minor);
+
+        let mut app_name_ptr = CString::from(c"").into_raw();
+        version_service.GetAppName(false.into(), &mut app_name_ptr);
+        let app_name = CString::from_raw(app_name_ptr);
+        dbg!(app_name);
+
+        let msg = CString::from_str("we're calling debug mprint from rust!").unwrap();
+        dbg!(&msg);
+
+        let null_msg = CString::from_str("").unwrap();
+        let _ = debug_service.MPrint(
+            &mut msg.as_ptr(),
+            &mut null_msg.as_ptr(),
+            &mut null_msg.as_ptr(),
+            &mut null_msg.as_ptr(),
+            &mut null_msg.as_ptr(),
+            &mut null_msg.as_ptr(),
+            &mut null_msg.as_ptr(),
+            &mut null_msg.as_ptr(),
+        );
+
         let script_name = CString::from_str("TestScript").unwrap();
         dbg!(&script_name);
         let test_mod: IScriptModule = TestScriptModule {
