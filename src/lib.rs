@@ -217,13 +217,70 @@ impl IScriptModule_Impl for TestScriptModule_Impl {
     unsafe fn EndClassIter(&self, _: &mut c_uint) {}
 }
 
-#[implement(IScript)]
-pub struct TestScript;
+trait DarkScript: Sized
+where
+    IScript: From<Self>,
+    Self: Default,
+{
+    const NAME: &str;
 
-unsafe extern "C" fn test_script_factory(_: *const c_char, _: c_int) -> *mut IScript {
+    fn get_desc(mod_name: &str) -> sScrClassDesc {
+        let mod_ = CString::from_str(mod_name).unwrap();
+        let name = CString::from_str(Self::NAME).unwrap();
+        sScrClassDesc {
+            mod_: mod_.into_raw(),
+            name: name.into_raw(),
+            base: null(),
+            factory: script_factory::<Self>,
+        }
+    }
+}
+
+#[implement(IScript)]
+#[derive(Default)]
+pub struct TestScript;
+impl DarkScript for TestScript {
+    const NAME: &str = "TestScript";
+}
+impl IScript_Impl for TestScript_Impl {
+    unsafe fn GetClassName(&self) -> *const c_char {
+        CString::from_str(TestScript::NAME).unwrap().into_raw()
+    }
+
+    unsafe fn ReceiveMessage(&self, msg: &mut sScrMsg, _: &mut sMultiParm, _: i32) -> HRESULT {
+        println!("{}::ReceiveMessage", TestScript::NAME);
+        dbg!(msg);
+        HRESULT(1)
+    }
+}
+
+#[implement(IScript)]
+#[derive(Default)]
+pub struct AnotherTestScript;
+impl DarkScript for AnotherTestScript {
+    const NAME: &str = "AnotherTestScript";
+}
+impl IScript_Impl for AnotherTestScript_Impl {
+    unsafe fn GetClassName(&self) -> *const c_char {
+        CString::from_str(AnotherTestScript::NAME)
+            .unwrap()
+            .into_raw()
+    }
+
+    unsafe fn ReceiveMessage(&self, msg: &mut sScrMsg, _: &mut sMultiParm, _: i32) -> HRESULT {
+        println!("{}::ReceiveMessage", AnotherTestScript::NAME);
+        dbg!(msg);
+        HRESULT(1)
+    }
+}
+
+unsafe extern "C" fn script_factory<T: Default>(_name: *const c_char, _id: c_int) -> *mut IScript
+where
+    IScript: From<T>,
+{
     unsafe {
         let mut ret: *mut c_void = null_mut();
-        let script: IScript = TestScript.into();
+        let script: IScript = T::default().into();
         let guid = IScript::IID;
         if !HRESULT::is_ok(script.query(&raw const guid, &mut ret)) {
             return null_mut();
@@ -231,18 +288,6 @@ unsafe extern "C" fn test_script_factory(_: *const c_char, _: c_int) -> *mut ISc
 
         println!("Script constructed wow");
         ret as *mut IScript
-    }
-}
-
-impl IScript_Impl for TestScript_Impl {
-    unsafe fn GetClassName(&self) -> *const c_char {
-        CString::from_str("TestScript").unwrap().into_raw()
-    }
-
-    unsafe fn ReceiveMessage(&self, msg: &mut sScrMsg, _: &mut sMultiParm, _: i32) -> HRESULT {
-        println!("TestScript::ReceiveMessage");
-        dbg!(msg);
-        HRESULT(1)
     }
 }
 
@@ -291,16 +336,13 @@ unsafe extern "stdcall" fn ScriptModuleInit(
             &mut null_msg.as_ptr(),
         );
 
-        let script_name = CString::from_str("TestScript").unwrap();
-        dbg!(&script_name);
+        let mod_name = CStr::from_ptr(name).to_str().unwrap();
         let test_mod: IScriptModule = TestScriptModule {
             name: CStr::from_ptr(name).into(),
-            classes: vec![sScrClassDesc {
-                mod_: name,
-                name: script_name.into_raw(),
-                base: null(),
-                factory: test_script_factory,
-            }],
+            classes: vec![
+                TestScript::get_desc(mod_name),
+                AnotherTestScript::get_desc(mod_name),
+            ],
         }
         .into();
         let guid = IScriptModule::IID;
