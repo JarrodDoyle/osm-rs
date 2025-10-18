@@ -188,18 +188,9 @@ impl IScriptModule_Impl for TestScriptModule_Impl {
     }
 
     unsafe fn GetFirstClass(&self, iter: &mut c_uint) -> *const sScrClassDesc {
-        println!("Getting first script class!");
-
-        unsafe {
-            *iter = 0;
-            if *iter < self.classes.len() as u32 {
-                println!("We got something!");
-                let class = &self.classes[*iter as usize];
-                dbg!(&class);
-                dbg!(&CStr::from_ptr(class.name));
-                dbg!(&CStr::from_ptr(class.mod_));
-                return class;
-            }
+        *iter = 0;
+        if *iter < self.classes.len() as u32 {
+            return &self.classes[*iter as usize];
         }
 
         null()
@@ -247,19 +238,20 @@ impl IScript_Impl for TestScript_Impl {
         CString::from_str(TestScript::NAME).unwrap().into_raw()
     }
 
-    unsafe fn ReceiveMessage(&self, _msg: &mut sScrMsg, _: &mut sMultiParm, _: i32) -> HRESULT {
+    unsafe fn ReceiveMessage(&self, msg: &mut sScrMsg, _: &mut sMultiParm, _: i32) -> HRESULT {
         let services = unsafe { SERVICES.expect("") };
 
-        dbg!(services.version.is_editor());
-        let (major, minor) = services.version.get_version();
-        dbg!(major, minor);
-
-        let app_name = services.version.get_app_name(false);
-        dbg!(app_name);
-
-        services
-            .debug
-            .print(&format!("{}::ReceiveMessage wow", TestScript::NAME));
+        let message_name = unsafe { CStr::from_ptr(msg.message).to_str().unwrap() };
+        if message_name == "BeginScript" {
+            let is_editor = services.version.is_editor();
+            let (major, minor) = services.version.get_version();
+            let app_name = services.version.get_app_name(true);
+            let script_name = TestScript::NAME;
+            services.debug.print(&format!("is_editor: {is_editor}"));
+            services.debug.print(&format!("app_name: {app_name}"));
+            services.debug.print(&format!("version: {major}.{minor}"));
+            services.debug.print(&format!("script: {script_name}"));
+        }
 
         HRESULT(1)
     }
@@ -279,8 +271,14 @@ impl IScript_Impl for AnotherTestScript_Impl {
     }
 
     unsafe fn ReceiveMessage(&self, msg: &mut sScrMsg, _: &mut sMultiParm, _: i32) -> HRESULT {
-        println!("{}::ReceiveMessage", AnotherTestScript::NAME);
-        dbg!(msg);
+        let services = unsafe { SERVICES.expect("") };
+
+        let message_name = unsafe { CStr::from_ptr(msg.message).to_str().unwrap() };
+        if message_name == "TurnOn" {
+            services.debug.print("Received TurnOn!");
+            services.debug.command("run ./cmds/TogglePhys.cmd");
+        }
+
         HRESULT(1)
     }
 }
@@ -297,7 +295,6 @@ where
             return null_mut();
         }
 
-        println!("Script constructed wow");
         ret as *mut IScript
     }
 }
