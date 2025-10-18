@@ -247,9 +247,35 @@ impl IScript_Impl for TestScript_Impl {
         CString::from_str(TestScript::NAME).unwrap().into_raw()
     }
 
-    unsafe fn ReceiveMessage(&self, msg: &mut sScrMsg, _: &mut sMultiParm, _: i32) -> HRESULT {
-        println!("{}::ReceiveMessage", TestScript::NAME);
-        dbg!(msg);
+    unsafe fn ReceiveMessage(&self, _msg: &mut sScrMsg, _: &mut sMultiParm, _: i32) -> HRESULT {
+        unsafe {
+            let services = SERVICES.expect("");
+            dbg!(services.version.IsEditor());
+
+            let mut major = 0;
+            let mut minor = 0;
+            services.version.GetVersion(&mut major, &mut minor);
+            dbg!(major, minor);
+
+            let mut app_name_ptr = CString::from(c"").into_raw();
+            services.version.GetAppName(false.into(), &mut app_name_ptr);
+            let app_name = CString::from_raw(app_name_ptr);
+            dbg!(app_name);
+
+            let msg = CString::new(format!("{}::ReceiveMessage", TestScript::NAME)).unwrap();
+            let null_msg = CString::from_str("").unwrap();
+            let _ = services.debug.MPrint(
+                &mut msg.as_ptr(),
+                &mut null_msg.as_ptr(),
+                &mut null_msg.as_ptr(),
+                &mut null_msg.as_ptr(),
+                &mut null_msg.as_ptr(),
+                &mut null_msg.as_ptr(),
+                &mut null_msg.as_ptr(),
+                &mut null_msg.as_ptr(),
+            );
+        }
+
         HRESULT(1)
     }
 }
@@ -291,6 +317,26 @@ where
     }
 }
 
+struct Services {
+    debug: IDebugService,
+    version: IVersionService,
+}
+
+impl Services {
+    fn new(script_manager: IScriptMan) -> Self {
+        Self {
+            debug: get_service::<IDebugService>(&script_manager),
+            version: get_service::<IVersionService>(&script_manager),
+        }
+    }
+}
+
+fn get_service<T: Interface>(script_manager: &IScriptMan) -> T {
+    unsafe { script_manager.GetService(&T::IID).cast::<T>().unwrap() }
+}
+
+static mut SERVICES: Option<&Services> = None;
+
 #[unsafe(no_mangle)]
 unsafe extern "stdcall" fn ScriptModuleInit(
     name: *const c_char,
@@ -300,41 +346,7 @@ unsafe extern "stdcall" fn ScriptModuleInit(
     out_mod: *mut *mut c_void,
 ) -> i32 {
     unsafe {
-        let version_service = script_manager
-            .GetService(&IVersionService::IID)
-            .cast::<IVersionService>()
-            .unwrap();
-        let debug_service = script_manager
-            .GetService(&IDebugService::IID)
-            .cast::<IDebugService>()
-            .unwrap();
-
-        dbg!(version_service.IsEditor());
-
-        let mut major = 0;
-        let mut minor = 0;
-        version_service.GetVersion(&mut major, &mut minor);
-        dbg!(major, minor);
-
-        let mut app_name_ptr = CString::from(c"").into_raw();
-        version_service.GetAppName(false.into(), &mut app_name_ptr);
-        let app_name = CString::from_raw(app_name_ptr);
-        dbg!(app_name);
-
-        let msg = CString::from_str("we're calling debug mprint from rust!").unwrap();
-        dbg!(&msg);
-
-        let null_msg = CString::from_str("").unwrap();
-        let _ = debug_service.MPrint(
-            &mut msg.as_ptr(),
-            &mut null_msg.as_ptr(),
-            &mut null_msg.as_ptr(),
-            &mut null_msg.as_ptr(),
-            &mut null_msg.as_ptr(),
-            &mut null_msg.as_ptr(),
-            &mut null_msg.as_ptr(),
-            &mut null_msg.as_ptr(),
-        );
+        SERVICES = Some(Box::leak(Box::new(Services::new(script_manager))));
 
         let mod_name = CStr::from_ptr(name).to_str().unwrap();
         let test_mod: IScriptModule = TestScriptModule {
