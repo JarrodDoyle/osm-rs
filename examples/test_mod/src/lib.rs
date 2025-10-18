@@ -1,6 +1,5 @@
 use std::{
     ffi::{CStr, CString, c_char},
-    os::raw::c_void,
     str::FromStr,
 };
 
@@ -63,20 +62,7 @@ impl IScript_Impl for AnotherTestScript_Impl {
 }
 
 #[unsafe(no_mangle)]
-unsafe extern "stdcall" fn ScriptModuleInit(
-    raw_name: *const c_char,
-    script_manager: IScriptMan,
-    _: *mut i32,
-    _: *mut IMalloc,
-    out_mod: *mut *mut c_void,
-) -> i32 {
-    services_init(script_manager);
-
-    let name = unsafe { CStr::from_ptr(raw_name) };
-    let mod_name = name.to_str().unwrap();
-
-    let mut test_mod = ScriptModule::new(mod_name);
-    test_mod.add_script::<TestScript>();
-    test_mod.add_script::<AnotherTestScript>();
-    unsafe { test_mod.register(out_mod).into() }
+pub extern "Rust" fn register_scripts(module: &mut ScriptModule) {
+    module.add_script::<TestScript>();
+    module.add_script::<AnotherTestScript>();
 }

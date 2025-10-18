@@ -1,7 +1,7 @@
 mod services;
 
 use std::{
-    ffi::{CString, c_char, c_int, c_uchar, c_uint, c_ulong},
+    ffi::{CStr, CString, c_char, c_int, c_uchar, c_uint, c_ulong},
     os::raw::c_void,
     ptr::{null, null_mut},
     str::FromStr,
@@ -272,4 +272,25 @@ where
 
         ret as *mut IScript
     }
+}
+
+#[unsafe(no_mangle)]
+extern "stdcall" fn ScriptModuleInit(
+    raw_name: *const c_char,
+    script_manager: IScriptMan,
+    _: *mut i32,
+    _: *mut IMalloc,
+    out_mod: *mut *mut c_void,
+) -> i32 {
+    services_init(script_manager);
+
+    unsafe {
+        let mut test_mod = ScriptModule::new(CStr::from_ptr(raw_name).to_str().unwrap());
+        register_scripts(&mut test_mod);
+        test_mod.register(out_mod).into()
+    }
+}
+
+unsafe extern "Rust" {
+    fn register_scripts(module: &mut ScriptModule);
 }
