@@ -1,14 +1,7 @@
-[package]
-name = "osm-rs"
-version = "0.1.0"
-edition = "2024"
-
-[lib]
-crate-type=["cdylib"]
+[workspace]
+resolver = "3"
+members = ["examples/*", "osm"]
 
 [profile.release]
 lto = true
-
-[dependencies]
-windows = { version = "0.62.2", features = ["Win32_System_Com"] }
-windows-core = "0.62.2"
+strip = true

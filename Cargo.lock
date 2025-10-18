@@ -3,7 +3,7 @@
 version = 4
 
 [[package]]
-name = "osm-rs"
+name = "osm"
 version = "0.1.0"
 dependencies = [
  "windows",
@@ -37,6 +37,14 @@ dependencies = [
  "proc-macro2",
  "quote",
  "unicode-ident",
+]
+
+[[package]]
+name = "test_mod"
+version = "0.1.0"
+dependencies = [
+ "osm",
+ "windows-core",
 ]
 
 [[package]]
