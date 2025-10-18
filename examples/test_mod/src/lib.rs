@@ -75,21 +75,8 @@ unsafe extern "stdcall" fn ScriptModuleInit(
     let name = unsafe { CStr::from_ptr(raw_name) };
     let mod_name = name.to_str().unwrap();
 
-    let test_mod: IScriptModule = ScriptModule {
-        name: name.into(),
-        classes: vec![
-            TestScript::get_desc(mod_name),
-            AnotherTestScript::get_desc(mod_name),
-        ],
-    }
-    .into();
-
-    let guid = IScriptModule::IID;
-    unsafe {
-        if !HRESULT::is_ok(test_mod.query(&raw const guid, out_mod)) {
-            return false.into();
-        }
-    }
-
-    true.into()
+    let mut test_mod = ScriptModule::new(mod_name);
+    test_mod.add_script::<TestScript>();
+    test_mod.add_script::<AnotherTestScript>();
+    unsafe { test_mod.register(out_mod).into() }
 }

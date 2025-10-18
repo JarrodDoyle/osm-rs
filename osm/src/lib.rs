@@ -168,7 +168,7 @@ pub unsafe trait IScriptMan: IUnknown {
 }
 
 #[interface("D40000D4-7B54-12A3-8348-00AA00A82B51")]
-pub unsafe trait IScriptModule: IUnknown {
+unsafe trait IScriptModule: IUnknown {
     fn GetName(&self) -> *const c_char;
     fn GetFirstClass(&self, iter: &mut c_uint) -> *const sScrClassDesc;
     fn GetNextClass(&self, iter: &mut c_uint) -> *const sScrClassDesc;
@@ -177,8 +177,40 @@ pub unsafe trait IScriptModule: IUnknown {
 
 #[implement(IScriptModule)]
 pub struct ScriptModule {
-    pub name: CString,
-    pub classes: Vec<sScrClassDesc>,
+    name: CString,
+    classes: Vec<sScrClassDesc>,
+}
+
+impl ScriptModule {
+    pub fn new(name: &str) -> Self {
+        Self {
+            name: CString::new(name).unwrap(),
+            classes: vec![],
+        }
+    }
+
+    pub fn add_script<T>(&mut self)
+    where
+        T: DarkScript,
+        IScript: From<T>,
+    {
+        self.classes.push(T::get_desc(self.name.to_str().unwrap()));
+    }
+
+    /// # Safety
+    ///
+    /// `out_mod` must be a non-null, valid pointer for writing an interface pointer.
+    pub unsafe fn register(self, out_mod: *mut *mut c_void) -> bool {
+        let script_module: IScriptModule = self.into();
+        let guid = IScriptModule::IID;
+        unsafe {
+            if !HRESULT::is_ok(script_module.query(&raw const guid, out_mod)) {
+                return false;
+            }
+        }
+
+        true
+    }
 }
 
 impl IScriptModule_Impl for ScriptModule_Impl {
@@ -226,7 +258,7 @@ where
     }
 }
 
-pub extern "C" fn script_factory<T: Default>(_name: *const c_char, _id: c_int) -> *mut IScript
+extern "C" fn script_factory<T: Default>(_name: *const c_char, _id: c_int) -> *mut IScript
 where
     IScript: From<T>,
 {
