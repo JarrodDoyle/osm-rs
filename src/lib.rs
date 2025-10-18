@@ -9,7 +9,7 @@ use std::{
 
 use windows::{Win32::System::Com::IMalloc, core::*};
 
-use crate::services::{IDebugService, IVersionService};
+use crate::services::Services;
 
 #[repr(C)]
 #[derive(Debug, Copy, Clone)]
@@ -248,33 +248,18 @@ impl IScript_Impl for TestScript_Impl {
     }
 
     unsafe fn ReceiveMessage(&self, _msg: &mut sScrMsg, _: &mut sMultiParm, _: i32) -> HRESULT {
-        unsafe {
-            let services = SERVICES.expect("");
-            dbg!(services.version.IsEditor());
+        let services = unsafe { SERVICES.expect("") };
 
-            let mut major = 0;
-            let mut minor = 0;
-            services.version.GetVersion(&mut major, &mut minor);
-            dbg!(major, minor);
+        dbg!(services.version.is_editor());
+        let (major, minor) = services.version.get_version();
+        dbg!(major, minor);
 
-            let mut app_name_ptr = CString::from(c"").into_raw();
-            services.version.GetAppName(false.into(), &mut app_name_ptr);
-            let app_name = CString::from_raw(app_name_ptr);
-            dbg!(app_name);
+        let app_name = services.version.get_app_name(false);
+        dbg!(app_name);
 
-            let msg = CString::new(format!("{}::ReceiveMessage", TestScript::NAME)).unwrap();
-            let null_msg = CString::from_str("").unwrap();
-            let _ = services.debug.MPrint(
-                &mut msg.as_ptr(),
-                &mut null_msg.as_ptr(),
-                &mut null_msg.as_ptr(),
-                &mut null_msg.as_ptr(),
-                &mut null_msg.as_ptr(),
-                &mut null_msg.as_ptr(),
-                &mut null_msg.as_ptr(),
-                &mut null_msg.as_ptr(),
-            );
-        }
+        services
+            .debug
+            .print(&format!("{}::ReceiveMessage wow", TestScript::NAME));
 
         HRESULT(1)
     }
@@ -315,24 +300,6 @@ where
         println!("Script constructed wow");
         ret as *mut IScript
     }
-}
-
-struct Services {
-    debug: IDebugService,
-    version: IVersionService,
-}
-
-impl Services {
-    fn new(script_manager: IScriptMan) -> Self {
-        Self {
-            debug: get_service::<IDebugService>(&script_manager),
-            version: get_service::<IVersionService>(&script_manager),
-        }
-    }
-}
-
-fn get_service<T: Interface>(script_manager: &IScriptMan) -> T {
-    unsafe { script_manager.GetService(&T::IID).cast::<T>().unwrap() }
 }
 
 static mut SERVICES: Option<&Services> = None;
