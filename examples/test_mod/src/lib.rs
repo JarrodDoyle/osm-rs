@@ -18,7 +18,7 @@ impl IScript_Impl for TestScript_Impl {
     }
 
     unsafe fn ReceiveMessage(&self, msg: &mut sScrMsg, _: &mut sMultiParm, _: i32) -> HRESULT {
-        let services = unsafe { SERVICES.expect("") };
+        let services = services();
 
         let message_name = unsafe { CStr::from_ptr(msg.message).to_str().unwrap() };
         if message_name == "BeginScript" {
@@ -50,7 +50,7 @@ impl IScript_Impl for AnotherTestScript_Impl {
     }
 
     unsafe fn ReceiveMessage(&self, msg: &mut sScrMsg, _: &mut sMultiParm, _: i32) -> HRESULT {
-        let services = unsafe { SERVICES.expect("") };
+        let services = services();
 
         let message_name = unsafe { CStr::from_ptr(msg.message).to_str().unwrap() };
         if message_name == "TurnOn" {
@@ -64,25 +64,28 @@ impl IScript_Impl for AnotherTestScript_Impl {
 
 #[unsafe(no_mangle)]
 unsafe extern "stdcall" fn ScriptModuleInit(
-    name: *const c_char,
+    raw_name: *const c_char,
     script_manager: IScriptMan,
     _: *mut i32,
     _: *mut IMalloc,
     out_mod: *mut *mut c_void,
 ) -> i32 {
-    unsafe {
-        SERVICES = Some(Box::leak(Box::new(Services::new(script_manager))));
+    services_init(script_manager);
 
-        let mod_name = CStr::from_ptr(name).to_str().unwrap();
-        let test_mod: IScriptModule = ScriptModule {
-            name: CStr::from_ptr(name).into(),
-            classes: vec![
-                TestScript::get_desc(mod_name),
-                AnotherTestScript::get_desc(mod_name),
-            ],
-        }
-        .into();
-        let guid = IScriptModule::IID;
+    let name = unsafe { CStr::from_ptr(raw_name) };
+    let mod_name = name.to_str().unwrap();
+
+    let test_mod: IScriptModule = ScriptModule {
+        name: name.into(),
+        classes: vec![
+            TestScript::get_desc(mod_name),
+            AnotherTestScript::get_desc(mod_name),
+        ],
+    }
+    .into();
+
+    let guid = IScriptModule::IID;
+    unsafe {
         if !HRESULT::is_ok(test_mod.query(&raw const guid, out_mod)) {
             return false.into();
         }

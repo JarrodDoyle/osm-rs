@@ -61,22 +61,27 @@ fn get_service<T: Interface>(script_manager: &IScriptMan) -> T {
     unsafe { script_manager.GetService(&T::IID).cast::<T>().unwrap() }
 }
 
+static mut SERVICES: Option<&Services> = None;
+
 pub struct Services {
     pub debug: DebugService,
     pub version: VersionService,
 }
 
-impl Services {
-    pub fn new(script_manager: IScriptMan) -> Self {
-        Self {
-            debug: DebugService {
-                service: get_service(&script_manager),
-            },
-            version: VersionService {
-                service: get_service(&script_manager),
-            },
-        }
-    }
+pub fn services_init(script_manager: IScriptMan) {
+    let services = Services {
+        debug: DebugService {
+            service: get_service(&script_manager),
+        },
+        version: VersionService {
+            service: get_service(&script_manager),
+        },
+    };
+    unsafe { SERVICES = Some(Box::leak(Box::new(services))) };
+}
+
+pub fn services() -> &'static Services {
+    unsafe { SERVICES.expect("Services hasn't been initialised.") }
 }
 
 pub struct DebugService {

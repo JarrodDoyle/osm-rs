@@ -7,7 +7,7 @@ use std::{
     str::FromStr,
 };
 
-pub use crate::services::Services;
+pub use crate::services::*;
 pub use windows::{Win32::System::Com::IMalloc, core::*};
 
 #[repr(C)]
@@ -241,5 +241,3 @@ where
         ret as *mut IScript
     }
 }
-
-pub static mut SERVICES: Option<&Services> = None;
