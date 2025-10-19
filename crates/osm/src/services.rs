@@ -1,6 +1,7 @@
 use std::{
     ffi::{CString, c_int},
     os::raw::c_char,
+    str::FromStr,
 };
 
 use windows::core::*;
@@ -14,7 +15,13 @@ unsafe trait IVersionService: IUnknown {
     fn GetAppName(&self, title_only: BOOL, app_name: &mut *mut c_char);
     fn GetVersion(&self, major: &mut c_int, minor: &mut c_int);
     fn IsEditor(&self) -> c_int;
-    // TODO:
+    fn GetGame(&self, game: &mut *mut c_char);
+    fn GetGamsys(&self, gamsys: &mut *mut c_char);
+    fn GetMap(&self, map: &mut *mut c_char);
+    fn GetCurrentFM(&self, current_fm: &mut *mut c_char) -> HRESULT;
+    fn GetCurrentFMPath(&self, current_fm_path: &mut *mut c_char) -> HRESULT;
+    fn FMizeRelativePath(&self, in_path: *const c_char, out_path: &mut *mut c_char);
+    fn FMizePath(&self, in_path: *const c_char, out_path: &mut *mut c_char);
 }
 
 #[interface("D70000D7-7B57-12A6-8348-00AA00A82B51")]
@@ -167,5 +174,69 @@ impl VersionService {
 
     pub fn is_editor(&self) -> i32 {
         unsafe { self.service.IsEditor() }
+    }
+
+    pub fn get_game(&self) -> String {
+        let mut ptr = CString::from(c"").into_raw();
+        unsafe {
+            self.service.GetGame(&mut ptr);
+            CString::from_raw(ptr).to_str().unwrap().to_string()
+        }
+    }
+
+    pub fn get_gamsys(&self) -> String {
+        let mut ptr = CString::from(c"").into_raw();
+        unsafe {
+            self.service.GetGamsys(&mut ptr);
+            CString::from_raw(ptr).to_str().unwrap().to_string()
+        }
+    }
+
+    pub fn get_map(&self) -> String {
+        let mut ptr = CString::from(c"").into_raw();
+        unsafe {
+            self.service.GetMap(&mut ptr);
+            CString::from_raw(ptr).to_str().unwrap().to_string()
+        }
+    }
+
+    pub fn get_current_fm(&self) -> Option<String> {
+        let mut ptr = CString::from(c"").into_raw();
+        let result = unsafe { self.service.GetCurrentFM(&mut ptr) };
+        let fm = unsafe { CString::from_raw(ptr).to_str().unwrap().to_string() };
+
+        match HRESULT::is_ok(result) {
+            true => Some(fm),
+            false => None,
+        }
+    }
+
+    pub fn get_current_fm_path(&self) -> Option<String> {
+        let mut ptr = CString::from(c"").into_raw();
+        let result = unsafe { self.service.GetCurrentFMPath(&mut ptr) };
+        let fm_path = unsafe { CString::from_raw(ptr).to_str().unwrap().to_string() };
+
+        match HRESULT::is_ok(result) {
+            true => Some(fm_path),
+            false => None,
+        }
+    }
+
+    pub fn fmize_relative_path(&self, path: &str) -> String {
+        let path = CString::from_str(path).unwrap();
+        let mut ptr = CString::from(c"").into_raw();
+        unsafe {
+            self.service.FMizeRelativePath(path.as_ptr(), &mut ptr);
+            CString::from_raw(ptr).to_str().unwrap().to_string()
+        }
+    }
+
+    pub fn fmize_path(&self, path: &str) -> String {
+        let path = CString::from_str(path).unwrap();
+        let mut ptr = CString::from(c"").into_raw();
+        unsafe {
+            self.service.FMizePath(path.as_ptr(), &mut ptr);
+            CString::from_raw(ptr).to_str().unwrap().to_string()
+        }
     }
 }
