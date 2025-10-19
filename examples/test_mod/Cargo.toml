@@ -7,5 +7,5 @@ edition = "2024"
 crate-type=["cdylib"]
 
 [dependencies]
-osm = { path = "../../osm" }
+osm = { path = "../../crates/osm" }
 windows-core = "0.62.2"

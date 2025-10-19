@@ -1,6 +1,6 @@
 [workspace]
 resolver = "3"
-members = ["examples/*", "osm", "osm-proc-macros"]
+members = ["examples/*", "crates/*"]
 
 [profile.release]
 lto = true
