@@ -68,7 +68,7 @@ pub struct Services {
     pub version: VersionService,
 }
 
-pub fn services_init(script_manager: IScriptMan) {
+pub(crate) fn services_init(script_manager: IScriptMan) {
     let services = Services {
         debug: DebugService {
             service: get_service(&script_manager),
