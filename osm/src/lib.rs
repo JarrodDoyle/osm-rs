@@ -3,11 +3,11 @@ mod services;
 use std::{
     ffi::{CStr, CString, c_char, c_int, c_uchar, c_uint, c_ulong},
     os::raw::c_void,
-    ptr::{null, null_mut},
-    str::FromStr,
+    ptr::null,
 };
 
 pub use crate::services::*;
+pub use osm_proc_macros::dark_script;
 pub use windows::{Win32::System::Com::IMalloc, core::*};
 
 #[repr(C)]
@@ -244,34 +244,8 @@ where
     IScript: From<Self>,
     Self: Default,
 {
-    const NAME: &str;
-
-    fn get_desc(mod_name: &str) -> sScrClassDesc {
-        let mod_ = CString::from_str(mod_name).unwrap();
-        let name = CString::from_str(Self::NAME).unwrap();
-        sScrClassDesc {
-            mod_: mod_.into_raw(),
-            name: name.into_raw(),
-            base: null(),
-            factory: script_factory::<Self>,
-        }
-    }
-}
-
-extern "C" fn script_factory<T: Default>(_name: *const c_char, _id: c_int) -> *mut IScript
-where
-    IScript: From<T>,
-{
-    unsafe {
-        let mut ret: *mut c_void = null_mut();
-        let script: IScript = T::default().into();
-        let guid = IScript::IID;
-        if !HRESULT::is_ok(script.query(&raw const guid, &mut ret)) {
-            return null_mut();
-        }
-
-        ret as *mut IScript
-    }
+    fn get_desc(mod_name: &str) -> sScrClassDesc;
+    extern "C" fn factory(_name: *const c_char, _id: c_int) -> *mut IScript;
 }
 
 #[unsafe(no_mangle)]
