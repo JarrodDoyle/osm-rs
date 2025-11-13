@@ -182,7 +182,7 @@ pub struct ScriptModule {
 }
 
 impl ScriptModule {
-    pub fn new(name: &str) -> Self {
+    fn new(name: &str) -> Self {
         Self {
             name: CString::new(name).unwrap(),
             classes: vec![],
@@ -200,7 +200,7 @@ impl ScriptModule {
     /// # Safety
     ///
     /// `out_mod` must be a non-null, valid pointer for writing an interface pointer.
-    pub unsafe fn register(self, out_mod: *mut *mut c_void) -> bool {
+    unsafe fn register(self, out_mod: *mut *mut c_void) -> bool {
         let script_module: IScriptModule = self.into();
         let guid = IScriptModule::IID;
         unsafe {
