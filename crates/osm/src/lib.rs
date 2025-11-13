@@ -182,14 +182,14 @@ pub struct ScriptModule {
 }
 
 impl ScriptModule {
-    pub fn new(name: &str) -> Self {
+    fn new(name: &str) -> Self {
         Self {
             name: CString::new(name).unwrap(),
             classes: vec![],
         }
     }
 
-    pub fn add_script<T>(&mut self)
+    pub fn register_script<T>(&mut self)
     where
         T: DarkScript,
         IScript: From<T>,
@@ -200,7 +200,7 @@ impl ScriptModule {
     /// # Safety
     ///
     /// `out_mod` must be a non-null, valid pointer for writing an interface pointer.
-    pub unsafe fn register(self, out_mod: *mut *mut c_void) -> bool {
+    unsafe fn register(self, out_mod: *mut *mut c_void) -> bool {
         let script_module: IScriptModule = self.into();
         let guid = IScriptModule::IID;
         unsafe {
@@ -260,11 +260,11 @@ extern "stdcall" fn ScriptModuleInit(
 
     unsafe {
         let mut test_mod = ScriptModule::new(CStr::from_ptr(raw_name).to_str().unwrap());
-        register_scripts(&mut test_mod);
+        module_init(&mut test_mod);
         test_mod.register(out_mod).into()
     }
 }
 
 unsafe extern "Rust" {
-    fn register_scripts(module: &mut ScriptModule);
+    fn module_init(module: &mut ScriptModule);
 }
