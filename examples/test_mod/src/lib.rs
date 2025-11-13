@@ -34,7 +34,7 @@ impl AnotherTestScript {
 }
 
 #[unsafe(no_mangle)]
-pub extern "Rust" fn register_scripts(module: &mut ScriptModule) {
-    module.add_script::<TestScript>();
-    module.add_script::<AnotherTestScript>();
+pub extern "Rust" fn module_init(module: &mut ScriptModule) {
+    module.register_script::<TestScript>();
+    module.register_script::<AnotherTestScript>();
 }

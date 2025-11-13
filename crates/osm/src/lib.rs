@@ -189,7 +189,7 @@ impl ScriptModule {
         }
     }
 
-    pub fn add_script<T>(&mut self)
+    pub fn register_script<T>(&mut self)
     where
         T: DarkScript,
         IScript: From<T>,
@@ -260,11 +260,11 @@ extern "stdcall" fn ScriptModuleInit(
 
     unsafe {
         let mut test_mod = ScriptModule::new(CStr::from_ptr(raw_name).to_str().unwrap());
-        register_scripts(&mut test_mod);
+        module_init(&mut test_mod);
         test_mod.register(out_mod).into()
     }
 }
 
 unsafe extern "Rust" {
-    fn register_scripts(module: &mut ScriptModule);
+    fn module_init(module: &mut ScriptModule);
 }
