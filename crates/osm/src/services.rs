@@ -8,20 +8,31 @@ use windows::core::*;
 
 use crate::IScriptMan;
 
-#[interface("2A000228-7CA8-13F7-8348-00AA00A82B51")]
-unsafe trait IVersionService: IUnknown {
-    fn Init(&self);
-    fn End(&self);
-    fn GetAppName(&self, title_only: BOOL, app_name: &mut *mut c_char);
-    fn GetVersion(&self, major: &mut c_int, minor: &mut c_int);
-    fn IsEditor(&self) -> c_int;
-    fn GetGame(&self, game: &mut *mut c_char);
-    fn GetGamsys(&self, gamsys: &mut *mut c_char);
-    fn GetMap(&self, map: &mut *mut c_char);
-    fn GetCurrentFM(&self, current_fm: &mut *mut c_char) -> HRESULT;
-    fn GetCurrentFMPath(&self, current_fm_path: &mut *mut c_char) -> HRESULT;
-    fn FMizeRelativePath(&self, in_path: *const c_char, out_path: &mut *mut c_char);
-    fn FMizePath(&self, in_path: *const c_char, out_path: &mut *mut c_char);
+static mut SERVICES: Option<&Services> = None;
+
+pub struct Services {
+    pub debug: DebugService,
+    pub version: VersionService,
+}
+
+pub fn services() -> &'static Services {
+    unsafe { SERVICES.expect("Services hasn't been initialised.") }
+}
+
+pub(crate) fn services_init(script_manager: IScriptMan) {
+    let services = Services {
+        debug: DebugService {
+            service: get_service(&script_manager),
+        },
+        version: VersionService {
+            service: get_service(&script_manager),
+        },
+    };
+    unsafe { SERVICES = Some(Box::leak(Box::new(services))) };
+}
+
+fn get_service<T: Interface>(script_manager: &IScriptMan) -> T {
+    unsafe { script_manager.GetService(&T::IID).cast::<T>().unwrap() }
 }
 
 #[interface("D70000D7-7B57-12A6-8348-00AA00A82B51")]
@@ -62,33 +73,6 @@ unsafe trait IDebugService: IUnknown {
         s7: &mut *const c_char,
         s8: &mut *const c_char,
     ) -> HRESULT;
-}
-
-fn get_service<T: Interface>(script_manager: &IScriptMan) -> T {
-    unsafe { script_manager.GetService(&T::IID).cast::<T>().unwrap() }
-}
-
-static mut SERVICES: Option<&Services> = None;
-
-pub struct Services {
-    pub debug: DebugService,
-    pub version: VersionService,
-}
-
-pub(crate) fn services_init(script_manager: IScriptMan) {
-    let services = Services {
-        debug: DebugService {
-            service: get_service(&script_manager),
-        },
-        version: VersionService {
-            service: get_service(&script_manager),
-        },
-    };
-    unsafe { SERVICES = Some(Box::leak(Box::new(services))) };
-}
-
-pub fn services() -> &'static Services {
-    unsafe { SERVICES.expect("Services hasn't been initialised.") }
 }
 
 pub struct DebugService {
@@ -150,6 +134,22 @@ impl DebugService {
     pub fn breakpoint(&self) {
         let _ = unsafe { self.service.Break() };
     }
+}
+
+#[interface("2A000228-7CA8-13F7-8348-00AA00A82B51")]
+unsafe trait IVersionService: IUnknown {
+    fn Init(&self);
+    fn End(&self);
+    fn GetAppName(&self, title_only: BOOL, app_name: &mut *mut c_char);
+    fn GetVersion(&self, major: &mut c_int, minor: &mut c_int);
+    fn IsEditor(&self) -> c_int;
+    fn GetGame(&self, game: &mut *mut c_char);
+    fn GetGamsys(&self, gamsys: &mut *mut c_char);
+    fn GetMap(&self, map: &mut *mut c_char);
+    fn GetCurrentFM(&self, current_fm: &mut *mut c_char) -> HRESULT;
+    fn GetCurrentFMPath(&self, current_fm_path: &mut *mut c_char) -> HRESULT;
+    fn FMizeRelativePath(&self, in_path: *const c_char, out_path: &mut *mut c_char);
+    fn FMizePath(&self, in_path: *const c_char, out_path: &mut *mut c_char);
 }
 
 pub struct VersionService {
