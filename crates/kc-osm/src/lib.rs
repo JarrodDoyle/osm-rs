@@ -7,7 +7,7 @@ use std::{
 };
 
 pub use crate::services::*;
-pub use osm_proc_macros::dark_script;
+pub use kc_osm_proc_macros::dark_script;
 pub use windows::{Win32::System::Com::IMalloc, core::*};
 
 #[repr(C)]
