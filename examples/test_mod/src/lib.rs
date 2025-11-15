@@ -1,4 +1,4 @@
-use osm::*;
+use kc_osm::*;
 use std::str::FromStr;
 
 #[dark_script(BeginScript, TurnOn)]

@@ -1,0 +1,13 @@
+[package]
+name = "kc-osm"
+version = "0.0.1"
+edition = "2024"
+authors = ["Jarrod Doyle <thejarroddoyle@gmail.com>"]
+license = "MIT OR Apache-2.0"
+repository = "https://github.com/JarrodDoyle/osm-rs"
+description = "Helper library for writing Dark Engine object script modules (OSMs)"
+
+[dependencies]
+windows = { version = "0.62.2", features = ["Win32_System_Com"] }
+windows-core = "0.62.2"
+kc-osm-proc-macros = { version = "0.0.1", path = "../kc-osm-proc-macros" }
