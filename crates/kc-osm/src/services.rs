@@ -1,7 +1,7 @@
 use std::{
     ffi::{CStr, CString, c_float, c_int},
     os::raw::c_char,
-    ptr::null,
+    ptr::{null, null_mut},
     str::FromStr,
 };
 
@@ -327,10 +327,10 @@ pub struct VersionService {
 
 impl VersionService {
     pub fn get_app_name(&self, title_only: bool) -> String {
-        let mut ptr = CString::from(c"").into_raw();
+        let mut ptr = null_mut();
         unsafe {
             self.service.GetAppName(title_only.into(), &mut ptr);
-            CString::from_raw(ptr).to_str().unwrap().to_string()
+            CStr::from_ptr(ptr).to_string_lossy().into_owned()
         }
     }
 
@@ -346,33 +346,33 @@ impl VersionService {
     }
 
     pub fn get_game(&self) -> String {
-        let mut ptr = CString::from(c"").into_raw();
+        let mut ptr = null_mut();
         unsafe {
             self.service.GetGame(&mut ptr);
-            CString::from_raw(ptr).to_str().unwrap().to_string()
+            CStr::from_ptr(ptr).to_string_lossy().into_owned()
         }
     }
 
     pub fn get_gamsys(&self) -> String {
-        let mut ptr = CString::from(c"").into_raw();
+        let mut ptr = null_mut();
         unsafe {
             self.service.GetGamsys(&mut ptr);
-            CString::from_raw(ptr).to_str().unwrap().to_string()
+            CStr::from_ptr(ptr).to_string_lossy().into_owned()
         }
     }
 
     pub fn get_map(&self) -> String {
-        let mut ptr = CString::from(c"").into_raw();
+        let mut ptr = null_mut();
         unsafe {
             self.service.GetMap(&mut ptr);
-            CString::from_raw(ptr).to_str().unwrap().to_string()
+            CStr::from_ptr(ptr).to_string_lossy().into_owned()
         }
     }
 
     pub fn get_current_fm(&self) -> Option<String> {
-        let mut ptr = CString::from(c"").into_raw();
+        let mut ptr = null_mut();
         let result = unsafe { self.service.GetCurrentFM(&mut ptr) };
-        let fm = unsafe { CString::from_raw(ptr).to_str().unwrap().to_string() };
+        let fm = unsafe { CStr::from_ptr(ptr).to_string_lossy().into_owned() };
 
         match HRESULT::is_ok(result) {
             true => Some(fm),
@@ -381,9 +381,9 @@ impl VersionService {
     }
 
     pub fn get_current_fm_path(&self) -> Option<String> {
-        let mut ptr = CString::from(c"").into_raw();
+        let mut ptr = null_mut();
         let result = unsafe { self.service.GetCurrentFMPath(&mut ptr) };
-        let fm_path = unsafe { CString::from_raw(ptr).to_str().unwrap().to_string() };
+        let fm_path = unsafe { CStr::from_ptr(ptr).to_string_lossy().into_owned() };
 
         match HRESULT::is_ok(result) {
             true => Some(fm_path),
@@ -393,19 +393,19 @@ impl VersionService {
 
     pub fn fmize_relative_path(&self, path: &str) -> String {
         let path = CString::from_str(path).unwrap();
-        let mut ptr = CString::from(c"").into_raw();
+        let mut ptr = null_mut();
         unsafe {
             self.service.FMizeRelativePath(path.as_ptr(), &mut ptr);
-            CString::from_raw(ptr).to_str().unwrap().to_string()
+            CStr::from_ptr(ptr).to_string_lossy().into_owned()
         }
     }
 
     pub fn fmize_path(&self, path: &str) -> String {
         let path = CString::from_str(path).unwrap();
-        let mut ptr = CString::from(c"").into_raw();
+        let mut ptr = null_mut();
         unsafe {
             self.service.FMizePath(path.as_ptr(), &mut ptr);
-            CString::from_raw(ptr).to_str().unwrap().to_string()
+            CStr::from_ptr(ptr).to_string_lossy().into_owned()
         }
     }
 }
