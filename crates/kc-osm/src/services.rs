@@ -183,7 +183,7 @@ impl ActReactService {
     pub fn get_reaction_name(&self, id: i32) -> String {
         unsafe {
             let name = self.service.GetReactionName(id);
-            let value = CStr::from_ptr(name).to_str().unwrap().to_string();
+            let value = CStr::from_ptr(name).to_string_lossy().into_owned();
             malloc::free(name as *const c_void);
             value
         }
