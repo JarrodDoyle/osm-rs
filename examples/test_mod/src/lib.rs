@@ -1,3 +1,5 @@
+use std::result::Result;
+
 use kc_osm::*;
 use std::str::FromStr;
 
@@ -34,7 +36,9 @@ impl AnotherTestScript {
 }
 
 #[unsafe(no_mangle)]
-pub extern "Rust" fn module_init(module: &mut ScriptModule) {
+pub extern "Rust" fn module_init(module: &mut ScriptModule) -> Result<(), &'static str> {
     module.register_script::<TestScript>();
     module.register_script::<AnotherTestScript>();
+
+    Ok(())
 }

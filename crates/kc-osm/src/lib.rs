@@ -268,11 +268,16 @@ extern "stdcall" fn ScriptModuleInit(
 
     unsafe {
         let mut test_mod = ScriptModule::new(CStr::from_ptr(raw_name).to_str().unwrap());
-        module_init(&mut test_mod);
-        test_mod.register(out_mod).into()
+        match module_init(&mut test_mod) {
+            Ok(_) => test_mod.register(out_mod).into(),
+            Err(e) => {
+                services().debug.print(e);
+                false.into()
+            }
+        }
     }
 }
 
 unsafe extern "Rust" {
-    fn module_init(module: &mut ScriptModule);
+    fn module_init(module: &mut ScriptModule) -> std::result::Result<(), &'static str>;
 }
