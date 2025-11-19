@@ -1,7 +1,7 @@
 mod services;
 
 use std::{
-    ffi::{CStr, CString, c_char, c_int, c_uchar, c_uint, c_ulong},
+    ffi::{CStr, CString, c_char, c_float, c_int, c_uchar, c_uint, c_ulong},
     os::raw::c_void,
     ptr::null,
 };
@@ -9,6 +9,14 @@ use std::{
 pub use crate::services::*;
 pub use kc_osm_proc_macros::dark_script;
 pub use windows::{Win32::System::Com::IMalloc, core::*};
+
+#[repr(C)]
+#[derive(Debug, Copy, Clone)]
+pub struct sVector {
+    pub x: c_float,
+    pub y: c_float,
+    pub z: c_float,
+}
 
 #[repr(C)]
 #[derive(Debug, Copy, Clone)]

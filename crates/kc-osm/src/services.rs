@@ -7,13 +7,14 @@ use std::{
 
 use windows::core::*;
 
-use crate::{IScriptMan, sMultiParm};
+use crate::{IScriptMan, sMultiParm, sVector};
 
 static mut SERVICES: Option<&Services> = None;
 
 pub struct Services {
     pub act_react: ActReactService,
     pub debug: DebugService,
+    pub engine: EngineService,
     pub version: VersionService,
 }
 
@@ -27,6 +28,9 @@ pub(crate) fn services_init(script_manager: IScriptMan) {
             service: get_service(&script_manager),
         },
         debug: DebugService {
+            service: get_service(&script_manager),
+        },
+        engine: EngineService {
             service: get_service(&script_manager),
         },
         version: VersionService {
@@ -302,6 +306,287 @@ impl DebugService {
 
     pub fn breakpoint(&self) {
         let _ = unsafe { self.service.Break() };
+    }
+}
+
+#[interface("2B000229-7CA9-13F8-8348-00AA00A82B51")]
+unsafe trait IEngineService: IUnknown {
+    fn Init(&self);
+    fn End(&self);
+    fn ConfigIsDefined(&self, name: *const c_char) -> BOOL;
+    fn ConfigGetInt(&self, name: *const c_char, value: *mut c_int) -> BOOL;
+    fn ConfigGetFloat(&self, name: *const c_char, value: *mut c_float) -> BOOL;
+    fn ConfigGetRaw(&self, name: *const c_char, value: *mut *mut c_char) -> BOOL;
+    fn BindingGetFloat(&self, name: *const c_char) -> c_float;
+    fn FindFileInPath(
+        &self,
+        path_config_var: *const c_char,
+        filename: *const c_char,
+        fullname: *mut *mut c_char,
+    ) -> BOOL;
+    fn IsRunningDX6(&self) -> BOOL;
+    fn GetCanvasSize(&self, width: *mut c_int, height: *mut c_int);
+    fn GetAspectRatio(&self) -> c_float;
+    fn GetFog(&self, r: *mut c_int, g: *mut c_int, b: *mut c_int, dist: *mut c_float);
+    fn SetFog(&self, r: c_int, g: c_int, b: c_int, dist: c_float);
+    fn GetFogZone(
+        &self,
+        zone: c_int,
+        r: *mut c_int,
+        g: *mut c_int,
+        b: *mut c_int,
+        dist: *mut c_float,
+    );
+    fn SetFogZone(&self, zone: c_int, r: c_int, g: c_int, b: c_int, dist: c_float);
+    fn GetWeather(
+        &self,
+        precip_type: *mut c_int,
+        precip_freq: *mut c_float,
+        precip_speed: *mut c_float,
+        vis_dist: *mut c_float,
+        rend_radius: *mut c_float,
+        alpha: *mut c_float,
+        brightness: *mut c_float,
+        snow_jitter: *mut c_float,
+        rain_len: *mut c_float,
+        splash_freq: *mut c_float,
+        splash_radius: *mut c_float,
+        splash_height: *mut c_float,
+        splash_duration: *mut c_float,
+        texture: *mut *mut c_char,
+        wind: *mut sVector,
+    );
+    fn SetWeather(
+        &self,
+        precip_type: c_int,
+        precip_freq: c_float,
+        precip_speed: c_float,
+        vis_dist: c_float,
+        rend_radius: c_float,
+        alpha: c_float,
+        brightness: c_float,
+        snow_jitter: c_float,
+        rain_len: c_float,
+        splash_freq: c_float,
+        splash_radius: c_float,
+        splash_height: c_float,
+        splash_duration: c_float,
+        texture: *const c_char,
+        wind: *const sVector,
+    );
+}
+
+pub struct FogSettings {
+    pub r: i32,
+    pub g: i32,
+    pub b: i32,
+    pub distance: f32,
+}
+
+pub struct WeatherSettings {
+    pub precipitation_type: i32,
+    pub precipitation_frequency: f32,
+    pub precipitation_speed: f32,
+    pub visibility_distance: f32,
+    pub render_radius: f32,
+    pub alpha: f32,
+    pub brightness: f32,
+    pub snow_jitter: f32,
+    pub rain_length: f32,
+    pub splash_frequency: f32,
+    pub splash_radius: f32,
+    pub splash_height: f32,
+    pub splash_duration: f32,
+    pub texture: String,
+    pub wind: sVector,
+}
+
+pub struct EngineService {
+    service: IEngineService,
+}
+
+impl EngineService {
+    pub fn config_is_defined(&self, name: &str) -> bool {
+        let name = CString::from_str(name).unwrap();
+        unsafe { self.service.ConfigIsDefined(name.as_ptr()).into() }
+    }
+
+    pub fn config_get_int(&self, name: &str) -> Option<i32> {
+        let name = CString::from_str(name).unwrap();
+        let mut value = 0;
+        match unsafe { self.service.ConfigGetInt(name.as_ptr(), &mut value).into() } {
+            true => Some(value),
+            false => None,
+        }
+    }
+
+    pub fn config_get_float(&self, name: &str) -> Option<f32> {
+        let name = CString::from_str(name).unwrap();
+        let mut value = 0.0;
+        match unsafe {
+            self.service
+                .ConfigGetFloat(name.as_ptr(), &mut value)
+                .into()
+        } {
+            true => Some(value),
+            false => None,
+        }
+    }
+
+    pub fn config_get_raw(&self, name: &str) -> Option<String> {
+        let name = CString::from_str(name).unwrap();
+        let mut ptr = null_mut();
+        unsafe {
+            match self.service.ConfigGetRaw(name.as_ptr(), &mut ptr).into() {
+                true => Some(CStr::from_ptr(ptr).to_string_lossy().into_owned()),
+                false => None,
+            }
+        }
+    }
+
+    pub fn binding_get_float(&self, name: &str) -> f32 {
+        let name = CString::from_str(name).unwrap();
+        unsafe { self.service.BindingGetFloat(name.as_ptr()) }
+    }
+
+    pub fn find_file_in_path(&self, path_config_var: &str, filename: &str) -> Option<String> {
+        let path_config_var = CString::from_str(path_config_var).unwrap();
+        let filename = CString::from_str(filename).unwrap();
+        let mut ptr = null_mut();
+        unsafe {
+            match self
+                .service
+                .FindFileInPath(path_config_var.as_ptr(), filename.as_ptr(), &mut ptr)
+                .into()
+            {
+                true => Some(CStr::from_ptr(ptr).to_string_lossy().into_owned()),
+                false => None,
+            }
+        }
+    }
+
+    pub fn is_running_dx6(&self) -> bool {
+        unsafe { self.service.IsRunningDX6().into() }
+    }
+
+    pub fn get_canvas_size(&self) -> (i32, i32) {
+        let mut width = 0;
+        let mut height = 0;
+        unsafe { self.service.GetCanvasSize(&mut width, &mut height) };
+        (width, height)
+    }
+
+    pub fn get_aspect_ratio(&self) -> f32 {
+        unsafe { self.service.GetAspectRatio() }
+    }
+
+    pub fn get_fog(&self) -> FogSettings {
+        let mut r = 0;
+        let mut g = 0;
+        let mut b = 0;
+        let mut distance = 0.0;
+        unsafe { self.service.GetFog(&mut r, &mut g, &mut b, &mut distance) };
+        FogSettings { r, g, b, distance }
+    }
+
+    pub fn set_fog(&self, fog: &FogSettings) {
+        unsafe { self.service.SetFog(fog.r, fog.g, fog.b, fog.distance) };
+    }
+
+    pub fn get_fog_zone(&self, zone: i32) -> FogSettings {
+        let mut r = 0;
+        let mut g = 0;
+        let mut b = 0;
+        let mut distance = 0.0;
+        unsafe {
+            self.service
+                .GetFogZone(zone, &mut r, &mut g, &mut b, &mut distance)
+        };
+        FogSettings { r, g, b, distance }
+    }
+
+    pub fn set_fog_zone(&self, zone: i32, fog: &FogSettings) {
+        unsafe {
+            self.service
+                .SetFogZone(zone, fog.r, fog.g, fog.b, fog.distance)
+        };
+    }
+
+    pub fn get_weather(&self) -> WeatherSettings {
+        let mut precipitation_type = 0;
+        let mut precipitation_frequency = 0.0;
+        let mut precipitation_speed = 0.0;
+        let mut visibility_distance = 0.0;
+        let mut render_radius = 0.0;
+        let mut alpha = 0.0;
+        let mut brightness = 0.0;
+        let mut snow_jitter = 0.0;
+        let mut rain_length = 0.0;
+        let mut splash_frequency = 0.0;
+        let mut splash_radius = 0.0;
+        let mut splash_height = 0.0;
+        let mut splash_duration = 0.0;
+        let mut texture_ptr = null_mut();
+        let wind_ptr = null_mut();
+        unsafe {
+            self.service.GetWeather(
+                &mut precipitation_type,
+                &mut precipitation_frequency,
+                &mut precipitation_speed,
+                &mut visibility_distance,
+                &mut render_radius,
+                &mut alpha,
+                &mut brightness,
+                &mut snow_jitter,
+                &mut rain_length,
+                &mut splash_frequency,
+                &mut splash_radius,
+                &mut splash_height,
+                &mut splash_duration,
+                &mut texture_ptr,
+                wind_ptr,
+            );
+            WeatherSettings {
+                precipitation_type,
+                precipitation_frequency,
+                precipitation_speed,
+                visibility_distance,
+                render_radius,
+                alpha,
+                brightness,
+                snow_jitter,
+                rain_length,
+                splash_frequency,
+                splash_radius,
+                splash_height,
+                splash_duration,
+                texture: CStr::from_ptr(texture_ptr).to_string_lossy().into_owned(),
+                wind: *wind_ptr,
+            }
+        }
+    }
+
+    pub fn set_weather(&self, weather: &WeatherSettings) {
+        unsafe {
+            let texture = CString::from_str(&weather.texture).unwrap();
+            self.service.SetWeather(
+                weather.precipitation_type,
+                weather.precipitation_frequency,
+                weather.precipitation_speed,
+                weather.visibility_distance,
+                weather.render_radius,
+                weather.alpha,
+                weather.brightness,
+                weather.snow_jitter,
+                weather.rain_length,
+                weather.splash_frequency,
+                weather.splash_radius,
+                weather.splash_height,
+                weather.splash_duration,
+                texture.as_ptr(),
+                &weather.wind,
+            );
+        }
     }
 }
 
