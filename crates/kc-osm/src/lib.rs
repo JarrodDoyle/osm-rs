@@ -1,3 +1,4 @@
+mod malloc;
 mod services;
 
 use std::{
@@ -261,9 +262,10 @@ extern "stdcall" fn ScriptModuleInit(
     raw_name: *const c_char,
     script_manager: IScriptMan,
     _: *mut i32,
-    _: *mut IMalloc,
+    malloc: IMalloc,
     out_mod: *mut *mut c_void,
 ) -> i32 {
+    malloc::init(malloc);
     services_init(script_manager);
 
     unsafe {
