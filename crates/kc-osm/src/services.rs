@@ -1,13 +1,13 @@
 use std::{
     ffi::{CStr, CString, c_float, c_int},
-    os::raw::c_char,
+    os::raw::{c_char, c_void},
     ptr::{null, null_mut},
     str::FromStr,
 };
 
 use windows::core::*;
 
-use crate::{IScriptMan, sMultiParm, sVector};
+use crate::{IScriptMan, malloc, sMultiParm, sVector};
 
 static mut SERVICES: Option<&Services> = None;
 
@@ -183,7 +183,9 @@ impl ActReactService {
     pub fn get_reaction_name(&self, id: i32) -> String {
         unsafe {
             let name = self.service.GetReactionName(id);
-            CStr::from_ptr(name).to_str().unwrap().to_string()
+            let value = CStr::from_ptr(name).to_str().unwrap().to_string();
+            malloc::free(name as *const c_void);
+            value
         }
     }
 
@@ -437,10 +439,12 @@ impl EngineService {
         let name = CString::from_str(name).unwrap();
         let mut ptr = null_mut();
         unsafe {
-            match self.service.ConfigGetRaw(name.as_ptr(), &mut ptr).into() {
+            let val = match self.service.ConfigGetRaw(name.as_ptr(), &mut ptr).into() {
                 true => Some(CStr::from_ptr(ptr).to_string_lossy().into_owned()),
                 false => None,
-            }
+            };
+            malloc::free(ptr as *const c_void);
+            val
         }
     }
 
@@ -454,14 +458,16 @@ impl EngineService {
         let filename = CString::from_str(filename).unwrap();
         let mut ptr = null_mut();
         unsafe {
-            match self
+            let val = match self
                 .service
                 .FindFileInPath(path_config_var.as_ptr(), filename.as_ptr(), &mut ptr)
                 .into()
             {
                 true => Some(CStr::from_ptr(ptr).to_string_lossy().into_owned()),
                 false => None,
-            }
+            };
+            malloc::free(ptr as *const c_void);
+            val
         }
     }
 
@@ -546,7 +552,7 @@ impl EngineService {
                 &mut texture_ptr,
                 wind_ptr,
             );
-            WeatherSettings {
+            let val = WeatherSettings {
                 precipitation_type,
                 precipitation_frequency,
                 precipitation_speed,
@@ -562,7 +568,10 @@ impl EngineService {
                 splash_duration,
                 texture: CStr::from_ptr(texture_ptr).to_string_lossy().into_owned(),
                 wind: *wind_ptr,
-            }
+            };
+            // TODO: wind!?
+            malloc::free(texture_ptr as *const c_void);
+            val
         }
     }
 
@@ -615,7 +624,9 @@ impl VersionService {
         let mut ptr = null_mut();
         unsafe {
             self.service.GetAppName(title_only.into(), &mut ptr);
-            CStr::from_ptr(ptr).to_string_lossy().into_owned()
+            let val = CStr::from_ptr(ptr).to_string_lossy().into_owned();
+            malloc::free(ptr as *const c_void);
+            val
         }
     }
 
@@ -634,7 +645,9 @@ impl VersionService {
         let mut ptr = null_mut();
         unsafe {
             self.service.GetGame(&mut ptr);
-            CStr::from_ptr(ptr).to_string_lossy().into_owned()
+            let val = CStr::from_ptr(ptr).to_string_lossy().into_owned();
+            malloc::free(ptr as *const c_void);
+            val
         }
     }
 
@@ -642,7 +655,9 @@ impl VersionService {
         let mut ptr = null_mut();
         unsafe {
             self.service.GetGamsys(&mut ptr);
-            CStr::from_ptr(ptr).to_string_lossy().into_owned()
+            let val = CStr::from_ptr(ptr).to_string_lossy().into_owned();
+            malloc::free(ptr as *const c_void);
+            val
         }
     }
 
@@ -650,7 +665,9 @@ impl VersionService {
         let mut ptr = null_mut();
         unsafe {
             self.service.GetMap(&mut ptr);
-            CStr::from_ptr(ptr).to_string_lossy().into_owned()
+            let val = CStr::from_ptr(ptr).to_string_lossy().into_owned();
+            malloc::free(ptr as *const c_void);
+            val
         }
     }
 
@@ -658,6 +675,7 @@ impl VersionService {
         let mut ptr = null_mut();
         let result = unsafe { self.service.GetCurrentFM(&mut ptr) };
         let fm = unsafe { CStr::from_ptr(ptr).to_string_lossy().into_owned() };
+        unsafe { malloc::free(ptr as *const c_void) };
 
         match HRESULT::is_ok(result) {
             true => Some(fm),
@@ -669,6 +687,7 @@ impl VersionService {
         let mut ptr = null_mut();
         let result = unsafe { self.service.GetCurrentFMPath(&mut ptr) };
         let fm_path = unsafe { CStr::from_ptr(ptr).to_string_lossy().into_owned() };
+        unsafe { malloc::free(ptr as *const c_void) };
 
         match HRESULT::is_ok(result) {
             true => Some(fm_path),
@@ -681,7 +700,9 @@ impl VersionService {
         let mut ptr = null_mut();
         unsafe {
             self.service.FMizeRelativePath(path.as_ptr(), &mut ptr);
-            CStr::from_ptr(ptr).to_string_lossy().into_owned()
+            let val = CStr::from_ptr(ptr).to_string_lossy().into_owned();
+            malloc::free(ptr as *const c_void);
+            val
         }
     }
 
@@ -690,7 +711,9 @@ impl VersionService {
         let mut ptr = null_mut();
         unsafe {
             self.service.FMizePath(path.as_ptr(), &mut ptr);
-            CStr::from_ptr(ptr).to_string_lossy().into_owned()
+            let val = CStr::from_ptr(ptr).to_string_lossy().into_owned();
+            malloc::free(ptr as *const c_void);
+            val
         }
     }
 }
