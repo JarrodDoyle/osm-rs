@@ -5,7 +5,7 @@ use std::{
     str::FromStr,
 };
 
-use windows::core::*;
+use windows::{Win32::Foundation::S_FALSE, core::*};
 
 use crate::{IScriptMan, malloc, sMultiParm, sVector};
 
@@ -677,7 +677,7 @@ impl VersionService {
         let fm = unsafe { CStr::from_ptr(ptr).to_string_lossy().into_owned() };
         unsafe { malloc::free(ptr as *const c_void) };
 
-        match HRESULT::is_ok(result) {
+        match HRESULT::is_ok(result) && result != S_FALSE {
             true => Some(fm),
             false => None,
         }
@@ -689,7 +689,7 @@ impl VersionService {
         let fm_path = unsafe { CStr::from_ptr(ptr).to_string_lossy().into_owned() };
         unsafe { malloc::free(ptr as *const c_void) };
 
-        match HRESULT::is_ok(result) {
+        match HRESULT::is_ok(result) && result != S_FALSE {
             true => Some(fm_path),
             false => None,
         }
