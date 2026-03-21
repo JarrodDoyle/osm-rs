@@ -1,0 +1,12 @@
+[package]
+name = "custom_commands"
+version = "0.1.0"
+edition = "2024"
+
+[lib]
+crate-type=["cdylib"]
+
+[dependencies]
+kc-osm = { path = "../../crates/kc-osm" }
+windows-core = "0.62.2"
+windows-sys = { version = "0.61.2", features = ["Win32_System_LibraryLoader"] }
