@@ -86,7 +86,7 @@ pub fn register_command_set(cmds_ptr: *const Command, count: c_int) {
     };
 }
 
-pub fn log_cmds() {
+pub extern "C" fn log_cmds() {
     let debug = &services().debug;
 
     const COMMAND_LIST_SIZE_OFFSET: u32 = 0x6809bc;
@@ -127,17 +127,17 @@ pub extern "Rust" fn module_init(_: &mut ScriptModule) -> Result<(), &'static st
             print_shit as *const c_void,
         ),
         build_command(
-            "jay_custom_command2",
-            "seccond command!",
+            "log_cmds",
+            "Output more detailed information for every command in dromed",
             0,
             0xffffffff,
-            print_shit as *const c_void,
+            log_cmds as *const c_void,
         ),
     ]);
     let cmds_ptr = Box::into_raw(cmds) as *const Command;
 
     register_command_set(cmds_ptr, 2);
-    log_cmds();
+    // log_cmds();
 
     Ok(())
 }
