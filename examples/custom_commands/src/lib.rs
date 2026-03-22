@@ -18,9 +18,27 @@ fn cstr_convert(val: *const c_char) -> String {
 
 #[repr(C)]
 #[derive(Debug, Copy, Clone)]
+pub enum CommandType {
+    FuncVoid,
+    FuncBool,
+    FuncInt,
+    FuncFloat,
+    FuncDouble,
+    FuncString,
+    VarBool,
+    VarInt,
+    VarString,
+    VarIntArray,
+    VarFloat,
+    ToggleBool,
+    ToggleInt,
+}
+
+#[repr(C)]
+#[derive(Debug, Copy, Clone)]
 pub struct Command {
     pub name: *const c_char,
-    pub type_: c_int,
+    pub type_: CommandType,
     pub val: *const c_void,
     pub comment: *const c_char,
     pub contexts: c_ulong,
@@ -28,7 +46,13 @@ pub struct Command {
 }
 
 impl Command {
-    pub fn new(name: &str, help: &str, type_: i32, contexts: u32, func: *const c_void) -> Self {
+    pub fn new(
+        name: &str,
+        help: &str,
+        type_: CommandType,
+        contexts: u32,
+        func: *const c_void,
+    ) -> Self {
         Self {
             name: CString::new(name).unwrap().into_raw(),
             type_,
@@ -46,7 +70,7 @@ impl Display for Command {
         let comment = cstr_convert(self.comment);
         write!(
             f,
-            "('{}', {}, fn_ptr: {:?}, '{}', {}, {})",
+            "('{}', {:?}, fn_ptr: {:?}, '{}', {}, {})",
             name, self.type_, self.val, comment, self.contexts, self.unknown
         )
     }
@@ -125,21 +149,21 @@ pub extern "Rust" fn module_init(_: &mut ScriptModule) -> Result<(), &'static st
         Command::new(
             "jay_custom_command",
             "This is a custom command that does *something* epic",
-            0,
+            CommandType::FuncVoid,
             0xffffffff,
             print_shit as *const c_void,
         ),
         Command::new(
             "log_cmds",
             "Output more detailed information for every command in dromed",
-            0,
+            CommandType::FuncVoid,
             0xffffffff,
             log_cmds as *const c_void,
         ),
         Command::new(
             "jecho",
             "Prints whatever the input string was to mono",
-            5,
+            CommandType::FuncString,
             0xffffffff,
             echo as *const c_void,
         ),
