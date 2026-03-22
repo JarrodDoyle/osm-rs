@@ -12,3 +12,4 @@ windows = { version = "0.62.2", features = ["Win32_System_Com"] }
 windows-core = "0.62.2"
 windows-sys = { version = "0.61.2", features = ["Win32_System_LibraryLoader"] }
 kc-osm-proc-macros = { version = "0.0.1", path = "../kc-osm-proc-macros" }
+bitflags = "2.11.0"

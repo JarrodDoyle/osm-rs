@@ -5,9 +5,23 @@ use std::{
     sync::{LazyLock, Mutex},
 };
 
+use bitflags::bitflags;
 use windows_sys::Win32::System::LibraryLoader::GetModuleHandleA;
 
 use crate::cstr_convert;
+
+bitflags! {
+    #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
+    pub struct CommandContext: c_ulong {
+        const GAME_MODE = 0b00000001;
+        const BRUSH_EDIT = 0b00000010;
+        const OBJ_EDIT = 0b00000100;
+        const GAME_MODE2 = 0b00100000;
+
+        const EDITOR = Self::BRUSH_EDIT.bits() | Self::OBJ_EDIT.bits();
+        const ALL = !0;
+    }
+}
 
 #[repr(C)]
 #[derive(Debug, Copy, Clone)]
@@ -32,7 +46,7 @@ pub struct CommandInfo {
     pub name: String,
     pub type_: CommandType,
     pub comment: String,
-    pub contexts: u32,
+    pub contexts: CommandContext,
     pub unknown: i32,
 }
 
@@ -40,7 +54,7 @@ impl Display for CommandInfo {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(
             f,
-            "('{}', {:?}, '{}', {}, {})",
+            "('{}', {:?}, '{}', {:?}, {})",
             self.name, self.type_, self.comment, self.contexts, self.unknown
         )
     }
@@ -53,7 +67,7 @@ pub struct Command {
     pub type_: CommandType,
     pub val: *const c_void,
     pub comment: *const c_char,
-    pub contexts: c_ulong,
+    pub contexts: CommandContext,
     pub unknown: c_int,
 }
 
@@ -62,7 +76,7 @@ impl Command {
         name: &str,
         help: &str,
         type_: CommandType,
-        contexts: u32,
+        contexts: CommandContext,
         func: *const c_void,
     ) -> Self {
         Self {

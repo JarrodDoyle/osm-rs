@@ -8,7 +8,7 @@ use std::{
     ptr::null,
 };
 
-pub use crate::commands::{Command, CommandType, get_all_command_infos};
+pub use crate::commands::{Command, CommandContext, CommandType, get_all_command_infos};
 use crate::commands::{deregister_command_sets, register_command_set};
 pub use crate::services::*;
 pub use kc_osm_proc_macros::dark_script;

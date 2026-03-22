@@ -24,14 +24,14 @@ pub extern "Rust" fn module_init(module: &mut ScriptModule) -> Result<(), &'stat
             "log_cmds",
             "Output more detailed information for every command in dromed",
             CommandType::FuncVoid,
-            0xffffffff,
+            CommandContext::EDITOR,
             log_cmds as *const c_void,
         ),
         Command::new(
             "jecho",
             "Prints whatever the input string was to mono",
             CommandType::FuncString,
-            0xffffffff,
+            CommandContext::ALL,
             echo as *const c_void,
         ),
     ]);
