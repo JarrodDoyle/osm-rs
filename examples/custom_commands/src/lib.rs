@@ -10,7 +10,7 @@ use kc_osm::*;
 use windows_sys::Win32::System::LibraryLoader::GetModuleHandleA;
 
 fn cstr_convert(val: *const c_char) -> String {
-    if val == null() {
+    if val.is_null() {
         return "".to_owned();
     }
     unsafe { CStr::from_ptr(val).to_string_lossy().into_owned() }
@@ -76,6 +76,18 @@ impl Display for Command {
     }
 }
 
+pub fn get_command_ptrs() -> (*mut c_int, *mut *const Command, *mut c_int) {
+    const COMMAND_LIST_SIZE_OFFSET: u32 = 0x6809bc;
+    const COMMAND_LIST_OFFSET: u32 = 0x6809c0;
+    const COMMAND_COUNT_OFFSET: u32 = 0x680dc0;
+    let base = unsafe { GetModuleHandleA(null()) } as u32;
+
+    let command_list_size_ptr: *mut c_int = unsafe { transmute(base + COMMAND_LIST_SIZE_OFFSET) };
+    let command_list_ptr: *mut *const Command = unsafe { transmute(base + COMMAND_LIST_OFFSET) };
+    let command_count_ptr: *mut c_int = unsafe { transmute(base + COMMAND_COUNT_OFFSET) };
+    (command_list_size_ptr, command_list_ptr, command_count_ptr)
+}
+
 pub fn register_command_set(cmds: &[Command]) {
     let count = cmds.len() as i32;
     if count <= 0 {
@@ -83,50 +95,25 @@ pub fn register_command_set(cmds: &[Command]) {
     }
 
     let cmds_ptr = Box::leak(Box::new(cmds.to_vec())).as_ptr();
-
-    const COMMAND_LIST_SIZE_OFFSET: u32 = 0x6809bc;
-    const COMMAND_LIST_OFFSET: u32 = 0x6809c0;
-    const COMMAND_COUNT_OFFSET: u32 = 0x680dc0;
-    let base = unsafe { GetModuleHandleA(null()) } as u32;
-
-    let command_list_size_ptr: *mut c_int = unsafe { transmute(base + COMMAND_LIST_SIZE_OFFSET) };
-    let command_list_ptr: *mut *const Command = unsafe { transmute(base + COMMAND_LIST_OFFSET) };
-    let command_count_ptr: *mut c_int = unsafe { transmute(base + COMMAND_COUNT_OFFSET) };
-
+    let (command_list_size_ptr, command_list_ptr, command_count_ptr) = get_command_ptrs();
     unsafe {
-        println!("Command list size: {}", *command_list_size_ptr);
         let size_offset = (*command_list_size_ptr) as isize;
-        let set_ptr = command_list_ptr.offset(size_offset);
-        *set_ptr = cmds_ptr;
-        let count_ptr = command_count_ptr.offset(size_offset);
-        *count_ptr = count;
-        *command_list_size_ptr = *command_list_size_ptr + 1;
-        println!("Command list size: {}", *command_list_size_ptr);
-
-        let cmd = *cmds_ptr;
-        println!("Registered Cmd: {:?}", cmd);
+        *command_list_ptr.offset(size_offset) = cmds_ptr;
+        *command_count_ptr.offset(size_offset) = count;
+        *command_list_size_ptr += 1;
     };
 }
 
 pub extern "C" fn log_cmds() {
     let debug = &services().debug;
-
-    const COMMAND_LIST_SIZE_OFFSET: u32 = 0x6809bc;
-    const COMMAND_LIST_OFFSET: u32 = 0x6809c0;
-    const COMMAND_COUNT_OFFSET: u32 = 0x680dc0;
-    let base = unsafe { GetModuleHandleA(null()) } as u32;
-
-    let command_list_size_ptr: *mut c_int = unsafe { transmute(base + COMMAND_LIST_SIZE_OFFSET) };
-    let command_list_ptr: *mut *const Command = unsafe { transmute(base + COMMAND_LIST_OFFSET) };
-    let command_count_ptr: *mut c_int = unsafe { transmute(base + COMMAND_COUNT_OFFSET) };
-
+    let (command_list_size_ptr, command_list_ptr, command_count_ptr) = get_command_ptrs();
     unsafe {
-        for i in 0..(*command_list_size_ptr) {
-            let count = *(command_count_ptr.offset(i as isize));
+        for i in 0..*command_list_size_ptr {
+            let count = *command_count_ptr.offset(i as isize);
             debug.print(&format!("Command set contains {count} commands"));
             for j in 0..count {
                 let set_ptr = command_list_ptr.offset(i as isize);
-                let cmd = *((*set_ptr).offset(j as isize));
+                let cmd = *(*set_ptr).offset(j as isize);
                 debug.print(&format!("Command: {cmd}"));
             }
         }
