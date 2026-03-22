@@ -1,13 +1,18 @@
 use std::{
     ffi::{CStr, CString, c_char, c_int, c_ulong, c_void},
     fmt::Display,
-    mem::transmute,
     ptr::null,
     result::Result,
+    sync::{LazyLock, Mutex},
 };
 
 use kc_osm::*;
 use windows_sys::Win32::System::LibraryLoader::GetModuleHandleA;
+
+#[derive(Debug, Default)]
+struct State {
+    commands: Vec<usize>,
+}
 
 fn cstr_convert(val: *const c_char) -> String {
     if val.is_null() {
@@ -98,6 +103,34 @@ pub fn register_command_set(cmds: &[Command]) {
         *command_count_ptr.offset(size_offset) = count;
         *command_list_size_ptr += 1;
     };
+
+    let mut state = get_state();
+    state.commands.push(cmds_ptr as usize);
+}
+
+pub fn deregister_command_sets() {
+    let state = get_state();
+    let (command_list_size_ptr, command_list_ptr, command_count_ptr) = get_command_ptrs();
+    unsafe {
+        for cmd_set in &state.commands {
+            let cmd_set_ptr = *cmd_set as *const Command;
+            let mut found = false;
+            for i in 0..*command_list_size_ptr {
+                if *command_list_ptr.offset(i as isize) == cmd_set_ptr {
+                    found = true;
+                }
+
+                if !found {
+                    continue;
+                }
+
+                // Shift everything afterwards down
+                *command_list_ptr.offset(i as isize) = *command_list_ptr.offset((i + 1) as isize);
+                *command_count_ptr.offset(i as isize) = *command_count_ptr.offset((i + 1) as isize);
+                *command_list_size_ptr -= 1;
+            }
+        }
+    };
 }
 
 pub extern "C" fn log_cmds() {
@@ -153,4 +186,21 @@ pub extern "Rust" fn module_init(_: &mut ScriptModule) -> Result<(), &'static st
     ]);
 
     Ok(())
+}
+
+static STATE: LazyLock<Mutex<State>> = LazyLock::new(|| Mutex::new(State { commands: vec![] }));
+
+fn get_state<'a>() -> std::sync::MutexGuard<'a, State> {
+    STATE.lock().unwrap()
+}
+
+#[unsafe(no_mangle)]
+#[allow(non_snake_case, unused_variables)]
+extern "system" fn DllMain(dll_module: u32, call_reason: u32, _: *mut ()) -> bool {
+    match call_reason {
+        0 => deregister_command_sets(),
+        _ => (),
+    }
+
+    true
 }
