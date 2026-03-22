@@ -77,14 +77,10 @@ impl Display for Command {
 }
 
 pub fn get_command_ptrs() -> (*mut c_int, *mut *const Command, *mut c_int) {
-    const COMMAND_LIST_SIZE_OFFSET: u32 = 0x6809bc;
-    const COMMAND_LIST_OFFSET: u32 = 0x6809c0;
-    const COMMAND_COUNT_OFFSET: u32 = 0x680dc0;
     let base = unsafe { GetModuleHandleA(null()) } as u32;
-
-    let command_list_size_ptr: *mut c_int = unsafe { transmute(base + COMMAND_LIST_SIZE_OFFSET) };
-    let command_list_ptr: *mut *const Command = unsafe { transmute(base + COMMAND_LIST_OFFSET) };
-    let command_count_ptr: *mut c_int = unsafe { transmute(base + COMMAND_COUNT_OFFSET) };
+    let command_list_size_ptr = (base + 0x6809bc) as *mut c_int;
+    let command_list_ptr = (base + 0x6809c0) as *mut *const Command;
+    let command_count_ptr = (base + 0x680dc0) as *mut c_int;
     (command_list_size_ptr, command_list_ptr, command_count_ptr)
 }
 
