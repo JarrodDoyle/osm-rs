@@ -27,6 +27,19 @@ pub struct Command {
     unknown: c_int,
 }
 
+impl Command {
+    pub fn new(name: &str, help: &str, type_: i32, contexts: u32, func: *const c_void) -> Self {
+        Self {
+            name: CString::new(name).unwrap().into_raw(),
+            type_,
+            val: func,
+            comment: CString::new(help).unwrap().into_raw(),
+            contexts,
+            unknown: 0,
+        }
+    }
+}
+
 impl Display for Command {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         let name = cstr_convert(self.name);
@@ -36,23 +49,6 @@ impl Display for Command {
             "('{}', {}, fn_ptr: {:?}, '{}', {}, {})",
             name, self.type_, self.val, comment, self.contexts, self.unknown
         )
-    }
-}
-
-pub fn build_command(
-    name: &str,
-    help: &str,
-    type_: i32,
-    contexts: u32,
-    val: *const c_void,
-) -> Command {
-    Command {
-        name: CString::new(name).unwrap().into_raw(),
-        type_,
-        val,
-        comment: CString::new(help).unwrap().into_raw(),
-        contexts,
-        unknown: 0,
     }
 }
 
@@ -126,21 +122,21 @@ pub extern "C" fn echo(val: *const c_char) {
 #[unsafe(no_mangle)]
 pub extern "Rust" fn module_init(_: &mut ScriptModule) -> Result<(), &'static str> {
     register_command_set(&[
-        build_command(
+        Command::new(
             "jay_custom_command",
             "This is a custom command that does *something* epic",
             0,
             0xffffffff,
             print_shit as *const c_void,
         ),
-        build_command(
+        Command::new(
             "log_cmds",
             "Output more detailed information for every command in dromed",
             0,
             0xffffffff,
             log_cmds as *const c_void,
         ),
-        build_command(
+        Command::new(
             "jecho",
             "Prints whatever the input string was to mono",
             5,
