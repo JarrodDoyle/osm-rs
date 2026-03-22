@@ -9,6 +9,13 @@ use std::{
 use kc_osm::*;
 use windows_sys::Win32::System::LibraryLoader::GetModuleHandleA;
 
+fn cstr_convert(val: *const c_char) -> String {
+    if val == null() {
+        return "".to_owned();
+    }
+    unsafe { CStr::from_ptr(val).to_string_lossy().into_owned() }
+}
+
 #[repr(C)]
 #[derive(Debug, Copy, Clone)]
 pub struct Command {
@@ -22,16 +29,8 @@ pub struct Command {
 
 impl Display for Command {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        let name = if self.name == null() {
-            "".to_owned()
-        } else {
-            unsafe { CStr::from_ptr(self.name).to_string_lossy().into_owned() }
-        };
-        let comment = if self.comment == null() {
-            "".to_owned()
-        } else {
-            unsafe { CStr::from_ptr(self.comment).to_string_lossy().into_owned() }
-        };
+        let name = cstr_convert(self.name);
+        let comment = cstr_convert(self.comment);
         write!(
             f,
             "('{}', {}, fn_ptr: {:?}, '{}', {}, {})",
@@ -116,6 +115,11 @@ pub extern "C" fn print_shit() {
     services.debug.print("Wow this is my custom command.");
 }
 
+pub extern "C" fn echo(val: *const c_char) {
+    let msg = cstr_convert(val);
+    services().debug.print(&msg);
+}
+
 #[unsafe(no_mangle)]
 pub extern "Rust" fn module_init(_: &mut ScriptModule) -> Result<(), &'static str> {
     let cmds = Box::new([
@@ -133,11 +137,17 @@ pub extern "Rust" fn module_init(_: &mut ScriptModule) -> Result<(), &'static st
             0xffffffff,
             log_cmds as *const c_void,
         ),
+        build_command(
+            "jecho",
+            "Prints whatever the input string was to mono",
+            5,
+            0xffffffff,
+            echo as *const c_void,
+        ),
     ]);
     let cmds_ptr = Box::into_raw(cmds) as *const Command;
 
-    register_command_set(cmds_ptr, 2);
-    // log_cmds();
+    register_command_set(cmds_ptr, 3);
 
     Ok(())
 }
