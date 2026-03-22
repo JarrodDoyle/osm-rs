@@ -56,10 +56,13 @@ pub fn build_command(
     }
 }
 
-pub fn register_command_set(cmds_ptr: *const Command, count: c_int) {
+pub fn register_command_set(cmds: &[Command]) {
+    let count = cmds.len() as i32;
     if count <= 0 {
         return;
     }
+
+    let cmds_ptr = Box::leak(Box::new(cmds.to_vec())).as_ptr();
 
     const COMMAND_LIST_SIZE_OFFSET: u32 = 0x6809bc;
     const COMMAND_LIST_OFFSET: u32 = 0x6809c0;
@@ -122,7 +125,7 @@ pub extern "C" fn echo(val: *const c_char) {
 
 #[unsafe(no_mangle)]
 pub extern "Rust" fn module_init(_: &mut ScriptModule) -> Result<(), &'static str> {
-    let cmds = Box::new([
+    register_command_set(&[
         build_command(
             "jay_custom_command",
             "This is a custom command that does *something* epic",
@@ -145,9 +148,6 @@ pub extern "Rust" fn module_init(_: &mut ScriptModule) -> Result<(), &'static st
             echo as *const c_void,
         ),
     ]);
-    let cmds_ptr = Box::into_raw(cmds) as *const Command;
-
-    register_command_set(cmds_ptr, 3);
 
     Ok(())
 }
