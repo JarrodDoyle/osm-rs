@@ -149,6 +149,7 @@ pub(crate) fn deregister_command_sets() {
             for i in 0..*command_list_size_ptr {
                 if *command_list_ptr.offset(i as isize) == cmd_set_ptr {
                     found = true;
+                    *command_list_size_ptr -= 1;
                 }
 
                 if !found {
@@ -158,7 +159,6 @@ pub(crate) fn deregister_command_sets() {
                 // Shift everything afterwards down
                 *command_list_ptr.offset(i as isize) = *command_list_ptr.offset((i + 1) as isize);
                 *command_count_ptr.offset(i as isize) = *command_count_ptr.offset((i + 1) as isize);
-                *command_list_size_ptr -= 1;
             }
         }
     };
