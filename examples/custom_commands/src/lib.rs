@@ -16,6 +16,7 @@ pub struct Command {
     pub val: *const c_void,
     pub comment: *const c_char,
     pub contexts: c_ulong,
+    unknown: c_int,
 }
 
 pub fn build_command(
@@ -31,6 +32,7 @@ pub fn build_command(
         val,
         comment: CString::new(help).unwrap().into_raw(),
         contexts,
+        unknown: 0,
     }
 }
 
@@ -70,16 +72,25 @@ pub extern "C" fn print_shit() {
 
 #[unsafe(no_mangle)]
 pub extern "Rust" fn module_init(_: &mut ScriptModule) -> Result<(), &'static str> {
-    let cmds = Box::new([build_command(
-        "jay_custom_command",
-        "This is a custom command that does *something* epic",
-        0,
-        0xffffffff,
-        print_shit as *const c_void,
-    )]);
-    let cmds_ptr = Box::leak(cmds) as *const Command;
+    let cmds = Box::new([
+        build_command(
+            "jay_custom_command",
+            "This is a custom command that does *something* epic",
+            0,
+            0xffffffff,
+            print_shit as *const c_void,
+        ),
+        build_command(
+            "jay_custom_command2",
+            "seccond command!",
+            0,
+            0xffffffff,
+            print_shit as *const c_void,
+        ),
+    ]);
+    let cmds_ptr = Box::into_raw(cmds) as *const Command;
 
-    register_command_set(cmds_ptr, 1);
+    register_command_set(cmds_ptr, 2);
 
     println!("shit head");
     Ok(())
