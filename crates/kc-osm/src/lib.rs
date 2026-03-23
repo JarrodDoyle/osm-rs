@@ -8,7 +8,9 @@ use std::{
     ptr::null,
 };
 
-pub use crate::commands::{Command, CommandContext, CommandType, get_all_command_infos};
+pub use crate::commands::{
+    Command, CommandContext, CommandRegisterError, CommandType, get_all_command_infos,
+};
 use crate::commands::{deregister_command_sets, register_command_set};
 pub use crate::services::*;
 pub use kc_osm_proc_macros::dark_script;
@@ -210,8 +212,11 @@ impl ScriptModule {
     }
 
     /// Registers custom commands that can be ran in engine. Multiple groups of commands can be registers. All command groups are unregistered when the module is dropped.
-    pub fn register_commands(&self, cmds: &[Command]) {
-        register_command_set(cmds);
+    pub fn register_commands(
+        &self,
+        cmds: &[Command],
+    ) -> std::result::Result<(), CommandRegisterError> {
+        register_command_set(cmds)
     }
 
     /// # Safety
@@ -299,7 +304,7 @@ extern "stdcall" fn ScriptModuleInit(
         match module_init(&mut test_mod) {
             Ok(_) => test_mod.register(out_mod).into(),
             Err(e) => {
-                services().debug.print(e);
+                services().debug.print(&e);
                 false.into()
             }
         }
@@ -307,5 +312,5 @@ extern "stdcall" fn ScriptModuleInit(
 }
 
 unsafe extern "Rust" {
-    fn module_init(module: &mut ScriptModule) -> std::result::Result<(), &'static str>;
+    fn module_init(module: &mut ScriptModule) -> std::result::Result<(), String>;
 }

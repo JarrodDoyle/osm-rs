@@ -6,9 +6,20 @@ use std::{
 };
 
 use bitflags::bitflags;
+use thiserror::Error;
 use windows_sys::Win32::System::LibraryLoader::GetModuleHandleA;
 
 use crate::{cstr_convert, services};
+
+#[derive(Error, Debug)]
+pub enum CommandRegisterError {
+    #[error("Cannot register empty command group.")]
+    EmptySet,
+    #[error("Max command groups reached.")]
+    SetLimitReached,
+    #[error("Unsupported engine version.")]
+    UnsupportedEngineVersion,
+}
 
 bitflags! {
     #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
@@ -90,86 +101,93 @@ impl Command {
     }
 }
 
-fn get_command_ptrs() -> (*mut c_int, *mut *const Command, *mut c_int) {
+fn get_command_ptrs() -> Option<(*mut c_int, *mut *const Command, *mut c_int)> {
+    let version = &services().version;
+    let offsets = match (version.get_version(), version.is_editor() != 0) {
+        ((1, 28), true) => (0x6809bc, 0x6809c0, 0x680dc0),
+        _ => return None,
+    };
+
     let base = unsafe { GetModuleHandleA(null()) } as u32;
-    let command_list_size_ptr = (base + 0x6809bc) as *mut c_int;
-    let command_list_ptr = (base + 0x6809c0) as *mut *const Command;
-    let command_count_ptr = (base + 0x680dc0) as *mut c_int;
-    (command_list_size_ptr, command_list_ptr, command_count_ptr)
+    let set_count_ptr = (base + offsets.0) as *mut c_int;
+    let sets_ptr = (base + offsets.1) as *mut *const Command;
+    let cmd_count_ptr = (base + offsets.2) as *mut c_int;
+    Some((set_count_ptr, sets_ptr, cmd_count_ptr))
 }
 
 pub fn get_all_command_infos<'a>() -> Vec<CommandInfo> {
     let mut commands = vec![];
-    let (command_list_size_ptr, command_list_ptr, command_count_ptr) = get_command_ptrs();
-    unsafe {
-        for i in 0..*command_list_size_ptr {
-            let count = *command_count_ptr.offset(i as isize);
-            for j in 0..count {
-                let cmd = *(*command_list_ptr.offset(i as isize)).offset(j as isize);
-                commands.push(CommandInfo {
-                    name: cstr_convert(cmd.name),
-                    type_: cmd.type_,
-                    comment: cstr_convert(cmd.comment),
-                    contexts: cmd.contexts,
-                    unknown: cmd.unknown,
-                });
+    if let Some((set_count_ptr, sets_ptr, cmd_count_ptr)) = get_command_ptrs() {
+        unsafe {
+            for i in 0..*set_count_ptr {
+                let count = *cmd_count_ptr.offset(i as isize);
+                for j in 0..count {
+                    let cmd = *(*sets_ptr.offset(i as isize)).offset(j as isize);
+                    commands.push(CommandInfo {
+                        name: cstr_convert(cmd.name),
+                        type_: cmd.type_,
+                        comment: cstr_convert(cmd.comment),
+                        contexts: cmd.contexts,
+                        unknown: cmd.unknown,
+                    });
+                }
             }
-        }
-    };
+        };
+    }
 
     commands
 }
 
 const MAX_COMMAND_SETS: i32 = 256; // Checked that it's the same across versions in Ghidra
-pub(crate) fn register_command_set(cmds: &[Command]) {
-    let debug = &services().debug;
+pub(crate) fn register_command_set(cmds: &[Command]) -> Result<(), CommandRegisterError> {
     let count = cmds.len() as i32;
     if count <= 0 {
-        debug.print("Cannot register empty command group.");
-        return;
+        return Err(CommandRegisterError::EmptySet);
     }
 
-    let (command_list_size_ptr, command_list_ptr, command_count_ptr) = get_command_ptrs();
-    if unsafe { *command_list_size_ptr } >= MAX_COMMAND_SETS {
-        debug.print("Cannot register command group. Max command groups reached.");
-        return;
+    if let Some((set_count_ptr, sets_ptr, cmd_count_ptr)) = get_command_ptrs() {
+        if unsafe { *set_count_ptr } >= MAX_COMMAND_SETS {
+            return Err(CommandRegisterError::SetLimitReached);
+        }
+
+        let cmds_ptr = Box::leak(Box::new(cmds.to_vec())).as_ptr();
+        unsafe {
+            let size_offset = (*set_count_ptr) as isize;
+            *sets_ptr.offset(size_offset) = cmds_ptr;
+            *cmd_count_ptr.offset(size_offset) = count;
+            *set_count_ptr += 1;
+        };
+
+        COMMAND_SETS.lock().unwrap().push(cmds_ptr as usize);
+        return Ok(());
     }
 
-    let cmds_ptr = Box::leak(Box::new(cmds.to_vec())).as_ptr();
-    unsafe {
-        let size_offset = (*command_list_size_ptr) as isize;
-        *command_list_ptr.offset(size_offset) = cmds_ptr;
-        *command_count_ptr.offset(size_offset) = count;
-        *command_list_size_ptr += 1;
-    };
-
-    let mut commands = COMMAND_SETS.lock().unwrap();
-    commands.push(cmds_ptr as usize);
+    return Err(CommandRegisterError::UnsupportedEngineVersion);
 }
 
 pub(crate) fn deregister_command_sets() {
-    let commands = COMMAND_SETS.lock().unwrap();
-    let (command_list_size_ptr, command_list_ptr, command_count_ptr) = get_command_ptrs();
-    unsafe {
-        for cmd_set in commands.iter() {
-            let cmd_set_ptr = *cmd_set as *const Command;
-            let mut found = false;
-            for i in 0..*command_list_size_ptr {
-                if *command_list_ptr.offset(i as isize) == cmd_set_ptr {
-                    found = true;
-                    *command_list_size_ptr -= 1;
-                }
+    if let Some((set_count_ptr, sets_ptr, cmd_count_ptr)) = get_command_ptrs() {
+        unsafe {
+            for cmd_set in COMMAND_SETS.lock().unwrap().iter() {
+                let cmd_set_ptr = *cmd_set as *const Command;
+                let mut found = false;
+                for i in 0..*set_count_ptr {
+                    if *sets_ptr.offset(i as isize) == cmd_set_ptr {
+                        found = true;
+                        *set_count_ptr -= 1;
+                    }
 
-                if !found {
-                    continue;
-                }
+                    if !found {
+                        continue;
+                    }
 
-                // Shift everything afterwards down
-                *command_list_ptr.offset(i as isize) = *command_list_ptr.offset((i + 1) as isize);
-                *command_count_ptr.offset(i as isize) = *command_count_ptr.offset((i + 1) as isize);
+                    // Shift everything afterwards down
+                    *sets_ptr.offset(i as isize) = *sets_ptr.offset((i + 1) as isize);
+                    *cmd_count_ptr.offset(i as isize) = *cmd_count_ptr.offset((i + 1) as isize);
+                }
             }
-        }
-    };
+        };
+    }
 }
 
 static COMMAND_SETS: LazyLock<Mutex<Vec<usize>>> = LazyLock::new(|| Mutex::new(vec![]));
