@@ -8,7 +8,7 @@ use std::{
 use bitflags::bitflags;
 use windows_sys::Win32::System::LibraryLoader::GetModuleHandleA;
 
-use crate::cstr_convert;
+use crate::{cstr_convert, services};
 
 bitflags! {
     #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
@@ -120,14 +120,22 @@ pub fn get_all_command_infos<'a>() -> Vec<CommandInfo> {
     commands
 }
 
+const MAX_COMMAND_SETS: i32 = 256; // Checked that it's the same across versions in Ghidra
 pub(crate) fn register_command_set(cmds: &[Command]) {
+    let debug = &services().debug;
     let count = cmds.len() as i32;
     if count <= 0 {
+        debug.print("Cannot register empty command group.");
+        return;
+    }
+
+    let (command_list_size_ptr, command_list_ptr, command_count_ptr) = get_command_ptrs();
+    if unsafe { *command_list_size_ptr } >= MAX_COMMAND_SETS {
+        debug.print("Cannot register command group. Max command groups reached.");
         return;
     }
 
     let cmds_ptr = Box::leak(Box::new(cmds.to_vec())).as_ptr();
-    let (command_list_size_ptr, command_list_ptr, command_count_ptr) = get_command_ptrs();
     unsafe {
         let size_offset = (*command_list_size_ptr) as isize;
         *command_list_ptr.offset(size_offset) = cmds_ptr;
