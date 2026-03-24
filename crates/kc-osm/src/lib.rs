@@ -1,3 +1,4 @@
+mod commands;
 mod malloc;
 mod services;
 
@@ -7,6 +8,10 @@ use std::{
     ptr::null,
 };
 
+pub use crate::commands::{
+    Command, CommandContext, CommandRegisterError, CommandType, get_all_command_infos,
+};
+use crate::commands::{deregister_command_sets, register_command_set};
 pub use crate::services::*;
 pub use kc_osm_proc_macros::dark_script;
 pub use windows::{Win32::System::Com::IMalloc, core::*};
@@ -206,6 +211,14 @@ impl ScriptModule {
         self.classes.push(T::get_desc(self.name.to_str().unwrap()));
     }
 
+    /// Registers custom commands that can be ran in engine. Multiple groups of commands can be registers. All command groups are unregistered when the module is dropped.
+    pub fn register_commands(
+        &self,
+        cmds: &[Command],
+    ) -> std::result::Result<(), CommandRegisterError> {
+        register_command_set(cmds)
+    }
+
     /// # Safety
     ///
     /// `out_mod` must be a non-null, valid pointer for writing an interface pointer.
@@ -257,6 +270,24 @@ where
     extern "C" fn factory(_name: *const c_char, _id: c_int) -> *mut IScript;
 }
 
+pub fn cstr_convert(val: *const c_char) -> String {
+    if val.is_null() {
+        return "".to_owned();
+    }
+    unsafe { CStr::from_ptr(val).to_string_lossy().into_owned() }
+}
+
+#[unsafe(no_mangle)]
+#[allow(non_snake_case, unused_variables)]
+extern "system" fn DllMain(dll_module: u32, call_reason: u32, _: *mut ()) -> bool {
+    match call_reason {
+        0 => deregister_command_sets(),
+        _ => (),
+    }
+
+    true
+}
+
 #[unsafe(no_mangle)]
 extern "stdcall" fn ScriptModuleInit(
     raw_name: *const c_char,
@@ -273,7 +304,7 @@ extern "stdcall" fn ScriptModuleInit(
         match module_init(&mut test_mod) {
             Ok(_) => test_mod.register(out_mod).into(),
             Err(e) => {
-                services().debug.print(e);
+                services().debug.print(&e);
                 false.into()
             }
         }
@@ -281,5 +312,5 @@ extern "stdcall" fn ScriptModuleInit(
 }
 
 unsafe extern "Rust" {
-    fn module_init(module: &mut ScriptModule) -> std::result::Result<(), &'static str>;
+    fn module_init(module: &mut ScriptModule) -> std::result::Result<(), String>;
 }
