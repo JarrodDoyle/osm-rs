@@ -121,12 +121,8 @@ pub fn do_simple_menu(title: &str, items: &[&str]) -> Option<usize> {
     };
 
     let title = CString::new(title).unwrap();
-    let mut cstrings = vec![];
-    let mut list = vec![];
-    for item in items {
-        cstrings.push(CString::new(*item).unwrap());
-        list.push(cstrings.last().unwrap().as_ptr());
-    }
+    let cstrings: Vec<CString> = items.iter().map(|s| CString::new(*s).unwrap()).collect();
+    let list: Vec<*const i8> = cstrings.iter().map(|s| s.as_ptr()).collect();
     let idx = unsafe { func(title.as_ptr(), list.as_ptr(), items.len() as c_int) };
     if idx < 0 { None } else { Some(idx as usize) }
 }
