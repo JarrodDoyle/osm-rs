@@ -9,7 +9,21 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "843867be96c8daad0d758b57df9392b6d8d271134fce549de6ce169ff98a92af"
 
 [[package]]
+name = "cfg-if"
+version = "1.0.4"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "9330f8b2ff13f34540b44e946ef35111825727b38d33286ef986142615121801"
+
+[[package]]
 name = "custom_commands"
+version = "0.1.0"
+dependencies = [
+ "kc-osm",
+ "windows-core",
+]
+
+[[package]]
+name = "dialog"
 version = "0.1.0"
 dependencies = [
  "kc-osm",
@@ -28,6 +42,7 @@ version = "0.0.1"
 dependencies = [
  "bitflags",
  "kc-osm-proc-macros",
+ "libloading",
  "thiserror",
  "windows",
  "windows-core",
@@ -42,6 +57,16 @@ dependencies = [
  "proc-macro2",
  "quote",
  "syn",
+]
+
+[[package]]
+name = "libloading"
+version = "0.9.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "754ca22de805bb5744484a5b151a9e1a8e837d5dc232c2d7d8c2e3492edc8b60"
+dependencies = [
+ "cfg-if",
+ "windows-link",
 ]
 
 [[package]]

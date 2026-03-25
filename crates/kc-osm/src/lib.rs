@@ -1,4 +1,5 @@
 mod commands;
+pub mod dialogs;
 mod malloc;
 mod services;
 
