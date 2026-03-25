@@ -36,11 +36,10 @@ pub extern "C" fn struct_editor() {
     ];
     let struct_desc = StructDesc::new("MyStruct", 8, 0, &field_descs);
 
-    let item = MyStruct { float: 0.0, int: 2 };
-    let item_ptr = Box::into_raw(Box::new(item)) as *mut c_void;
+    let mut item = MyStruct { float: 0.0, int: 2 };
+    let item_ptr = &mut item as *mut _ as *mut c_void;
     let editor = construct_struct_editor(&editor_desc, &struct_desc, item_ptr);
     if editor.go(true) {
-        let item = unsafe { Box::from_raw(item_ptr as *mut MyStruct) };
         services().debug.print(&format!("{item:?}"));
     } else {
         services().debug.print("Cancelled");
