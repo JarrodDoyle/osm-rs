@@ -79,9 +79,28 @@ impl StructDesc {
 
 #[repr(C)]
 #[derive(Debug, Copy, Clone, Default)]
+pub enum FieldType {
+    #[default]
+    Int,
+    Bool,
+    Short,
+    Bitmask,
+    Enum,
+    String,
+    CharPtr,
+    VoidPtr,
+    Point,
+    Vec3,
+    Float,
+    FixPoint,
+    FixPointVec3,
+}
+
+#[repr(C)]
+#[derive(Debug, Copy, Clone, Default)]
 pub struct FieldDesc {
     name: [c_char; 32],
-    field_type: c_uint, // TODO: Enum
+    field_type: FieldType,
     size: c_ulong,
     offset: c_ulong,
     flags: c_uint, // TODO: Enum,
@@ -92,7 +111,7 @@ pub struct FieldDesc {
 }
 
 impl FieldDesc {
-    pub fn new(name: &str, field_type: u32, size: u32, offset: u32) -> Self {
+    pub fn new(name: &str, field_type: FieldType, size: u32, offset: u32) -> Self {
         let mut name_arr: [c_char; 32] = [0; 32];
         let name = CString::new(name).unwrap();
         let bytes = name.as_bytes();

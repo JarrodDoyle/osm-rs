@@ -4,7 +4,9 @@ use std::{
 };
 
 use kc_osm::{
-    dialogs::{FieldDesc, StructDesc, StructEditorDesc, construct_struct_editor, do_simple_menu},
+    dialogs::{
+        FieldDesc, FieldType, StructDesc, StructEditorDesc, construct_struct_editor, do_simple_menu,
+    },
     *,
 };
 
@@ -29,8 +31,8 @@ pub struct MyStruct {
 pub extern "C" fn struct_editor() {
     let editor_desc = StructEditorDesc::new("My Struct Editor", 0);
     let field_descs = [
-        FieldDesc::new("Float", 10, 4, 0),
-        FieldDesc::new("Int", 0, 4, 4),
+        FieldDesc::new("Float", FieldType::Float, 4, 0),
+        FieldDesc::new("Int", FieldType::Int, 4, 4),
     ];
     let struct_desc = StructDesc::new("MyStruct", 8, 0, &field_descs);
 
