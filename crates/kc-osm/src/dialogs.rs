@@ -1,4 +1,4 @@
-use std::ffi::{CString, c_char, c_int, c_uint, c_ulong, c_void};
+use std::ffi::{CString, c_char, c_float, c_int, c_short, c_uint, c_ulong, c_void};
 
 use libloading::os::windows::Library;
 pub use windows::core::*;
@@ -96,6 +96,36 @@ pub enum FieldType {
     FixPointVec3,
 }
 
+impl From<c_int> for FieldType {
+    fn from(_value: c_int) -> Self {
+        Self::Int
+    }
+}
+
+impl From<BOOL> for FieldType {
+    fn from(_value: BOOL) -> Self {
+        Self::Bool
+    }
+}
+
+impl From<c_short> for FieldType {
+    fn from(_value: c_short) -> Self {
+        Self::Short
+    }
+}
+
+impl<const N: usize> From<[c_char; N]> for FieldType {
+    fn from(_value: [c_char; N]) -> Self {
+        Self::String
+    }
+}
+
+impl From<c_float> for FieldType {
+    fn from(_value: c_float) -> Self {
+        Self::Float
+    }
+}
+
 #[repr(C)]
 #[derive(Debug, Copy, Clone, Default)]
 pub struct FieldDesc {
@@ -111,7 +141,7 @@ pub struct FieldDesc {
 }
 
 impl FieldDesc {
-    pub fn new(name: &str, field_type: FieldType, size: u32, offset: u32) -> Self {
+    pub fn new(name: &str, field_type: FieldType, size: usize, offset: usize) -> Self {
         let mut name_arr: [c_char; 32] = [0; 32];
         let name = CString::new(name).unwrap();
         let bytes = name.as_bytes();
@@ -122,8 +152,8 @@ impl FieldDesc {
         Self {
             name: name_arr,
             field_type,
-            size,
-            offset,
+            size: size as u32,
+            offset: offset as u32,
             ..Default::default()
         }
     }
@@ -164,4 +194,8 @@ pub fn construct_struct_editor(
 
     let ed = unsafe { func(editor_desc, struct_desc, item) };
     StructEditor { ed }
+}
+
+pub trait EdittableStruct {
+    fn edit_struct(&mut self) -> bool;
 }

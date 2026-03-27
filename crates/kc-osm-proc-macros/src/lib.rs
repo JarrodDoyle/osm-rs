@@ -2,7 +2,11 @@ use heck::ToSnakeCase;
 use proc_macro::TokenStream;
 use proc_macro2::Span;
 use proc_macro2::TokenStream as TokenStream2;
+use quote::quote_spanned;
 use quote::{ToTokens, format_ident, quote};
+use syn::Data;
+use syn::DeriveInput;
+use syn::spanned::Spanned;
 use syn::{
     Field, Fields, Ident, ItemStruct, Meta, parse::Parser, parse_macro_input,
     punctuated::Punctuated,
@@ -99,6 +103,60 @@ pub fn dark_script(attr: TokenStream, item: TokenStream) -> TokenStream {
                     return std::ptr::null_mut();
                 }
                 ret as *mut IScript
+            }
+        }
+    }
+    .into()
+}
+
+#[proc_macro_derive(EdittableStruct, attributes(field_desc))]
+pub fn struct_editor(input: TokenStream) -> TokenStream {
+    let input = parse_macro_input!(input as DeriveInput);
+    let ident = &input.ident;
+    let ident_string = ident.to_string();
+    let input_fields = match &input.data {
+        Data::Struct(data) => data.clone().fields,
+        _ => {
+            return syn::Error::new_spanned(&input, "Builder can only be derived for structs")
+                .to_compile_error()
+                .into();
+        }
+    };
+
+    let mut field_descs = TokenStream2::default();
+    for field in input_fields {
+        let Some(ref field_ident) = field.ident else {
+            return syn::Error::new_spanned(&field, "Unnamed field is not supported")
+                .to_compile_error()
+                .into();
+        };
+
+        let field_ident_string = field_ident.to_string();
+        let field_ty = &field.ty;
+        for attr in &field.attrs {
+            if !attr.path().is_ident("field_desc") {
+                continue;
+            }
+
+            field_descs.extend(quote_spanned! {
+                field_ty.span() =>
+                kc_osm::dialogs::FieldDesc::new(
+                    #field_ident_string,
+                    self.#field_ident.into(),
+                    core::mem::size_of::<#field_ty>(),
+                    core::mem::offset_of!(#ident, #field_ident)),
+            });
+        }
+    }
+
+    quote! {
+        impl kc_osm::dialogs::EdittableStruct for #ident {
+            fn edit_struct(&mut self) -> bool {
+                let ed = kc_osm::dialogs::construct_struct_editor(
+                    &kc_osm::dialogs::StructEditorDesc::new("Struct Editor", 0),
+                    &kc_osm::dialogs::StructDesc::new(#ident_string, core::mem::size_of::<#ident>() as u32, 0, &[#field_descs]),
+                    self as *mut _ as *mut c_void);
+                ed.go(true)
             }
         }
     }
