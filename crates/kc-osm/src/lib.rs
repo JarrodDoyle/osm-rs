@@ -1,4 +1,5 @@
 mod commands;
+pub mod dialogs;
 mod malloc;
 mod services;
 
@@ -13,7 +14,7 @@ pub use crate::commands::{
 };
 use crate::commands::{deregister_command_sets, register_command_set};
 pub use crate::services::*;
-pub use kc_osm_proc_macros::dark_script;
+pub use kc_osm_proc_macros::{EdittableStruct, dark_script};
 pub use windows::{Win32::System::Com::IMalloc, core::*};
 
 #[repr(C)]
