@@ -1,6 +1,6 @@
 use std::result::Result;
 
-use kc_osm::*;
+use kc_osm::{messages::*, *};
 use std::str::FromStr;
 
 #[dark_script(BeginScript, TurnOn)]
@@ -24,13 +24,20 @@ impl TestScript {
     }
 }
 
-#[dark_script(TurnOn)]
+#[dark_script(TurnOn, FrobWorldBegin)]
 pub struct AnotherTestScript {}
 
 impl AnotherTestScript {
     pub fn on_turn_on(&self, services: &Services, _msg: &sScrMsg) -> HRESULT {
         services.debug.print("Handling TurnOn in AnotherTestScript");
         services.debug.command("run ./cmds/TogglePhys.cmd");
+        HRESULT(1)
+    }
+
+    pub fn on_frob_world_begin(&self, services: &Services, _msg: &sFrobMsg) -> HRESULT {
+        services
+            .debug
+            .print("Handling FrobWorldBegin in AnotherTestScript");
         HRESULT(1)
     }
 }
