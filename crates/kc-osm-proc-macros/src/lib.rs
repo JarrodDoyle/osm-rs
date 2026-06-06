@@ -1,3 +1,4 @@
+use dark_service_types::ScriptService;
 use heck::ToSnakeCase;
 use proc_macro::TokenStream;
 use proc_macro2::Span;
@@ -11,6 +12,42 @@ use syn::{
     Field, Fields, Ident, ItemStruct, Meta, parse::Parser, parse_macro_input,
     punctuated::Punctuated,
 };
+
+/// Defines a Dark Engine scripting service COM interface.
+///
+/// Takes a [`ScriptService`] variant name and computes the COM GUID, then
+/// delegates to [`windows_core::interface`].
+///
+/// # Example
+/// ```ignore
+/// #[dark_service(Container)]
+/// unsafe trait IContainerService: IUnknown { ... }
+/// ```
+///
+/// Expands to:
+/// ```ignore
+/// #[windows_core::interface("7D00017D-7BFD-134C-8348-00AA00A82B51")]
+/// unsafe trait IContainerService: IUnknown { ... }
+/// ```
+#[proc_macro_attribute]
+pub fn dark_service(attr: TokenStream, item: TokenStream) -> TokenStream {
+    let ident = parse_macro_input!(attr as Ident);
+    let guid = match ScriptService::from_name(&ident.to_string()) {
+        Some(svc) => svc.guid_string(),
+        None => {
+            return syn::Error::new_spanned(&ident, format!("Unknown `ScriptService`: `{ident}`"))
+                .to_compile_error()
+                .into();
+        }
+    };
+
+    let item: TokenStream2 = item.into();
+    quote! {
+        #[windows_core::interface(#guid)]
+        #item
+    }
+    .into()
+}
 
 #[proc_macro_attribute]
 pub fn dark_script(attr: TokenStream, item: TokenStream) -> TokenStream {

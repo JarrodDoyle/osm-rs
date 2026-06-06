@@ -5,6 +5,7 @@ use std::{
     str::FromStr,
 };
 
+use kc_osm_proc_macros::dark_service;
 use windows::{Win32::Foundation::S_FALSE, core::*};
 
 use crate::{IScriptMan, malloc, sMultiParm, sVector};
@@ -44,7 +45,7 @@ fn get_service<T: Interface>(script_manager: &IScriptMan) -> T {
     unsafe { script_manager.GetService(&T::IID).cast::<T>().unwrap() }
 }
 
-#[interface("F40000F4-7B74-12C3-8348-00AA00A82B51")]
+#[dark_service(ActReact)]
 unsafe trait IActReactServiceT1: IUnknown {
     fn Init(&self);
     fn End(&self);
@@ -74,7 +75,7 @@ unsafe trait IActReactServiceT1: IUnknown {
     fn Stimulate(&self, who: c_int, what: c_int, how_much: c_float, source: c_int) -> HRESULT;
 }
 
-#[interface("F40000F4-7B74-12C3-8348-00AA00A82B51")]
+#[dark_service(ActReact)]
 unsafe trait IActReactService: IUnknown {
     fn Init(&self);
     fn End(&self);
@@ -210,7 +211,7 @@ impl ActReactService {
     }
 }
 
-#[interface("D70000D7-7B57-12A6-8348-00AA00A82B51")]
+#[dark_service(Debug)]
 unsafe trait IDebugService: IUnknown {
     fn Init(&self);
     fn End(&self);
@@ -311,7 +312,7 @@ impl DebugService {
     }
 }
 
-#[interface("2B000229-7CA9-13F8-8348-00AA00A82B51")]
+#[dark_service(Engine)]
 unsafe trait IEngineService: IUnknown {
     fn Init(&self);
     fn End(&self);
@@ -599,7 +600,7 @@ impl EngineService {
     }
 }
 
-#[interface("2A000228-7CA8-13F7-8348-00AA00A82B51")]
+#[dark_service(Version)]
 unsafe trait IVersionService: IUnknown {
     fn Init(&self);
     fn End(&self);
