@@ -6,15 +6,22 @@ use std::{
 use kc_osm::*;
 
 pub extern "C" fn log_cmds() {
-    let debug = &services().debug;
+    let Some(debug) = &services().debug else {
+        return;
+    };
+
     for cmd in get_all_command_infos() {
         debug.print(&format!("Command: {cmd}"));
     }
 }
 
 pub extern "C" fn echo(val: *const c_char) {
+    let Some(debug) = &services().debug else {
+        return;
+    };
+
     let msg = cstr_convert(val);
-    services().debug.print(&msg);
+    debug.print(&msg);
 }
 
 #[unsafe(no_mangle)]

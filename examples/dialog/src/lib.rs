@@ -13,13 +13,15 @@ use kc_osm::{
 };
 
 pub extern "C" fn dialog() {
+    let Some(debug) = &services().debug else {
+        return;
+    };
+
     let items = vec!["String 1", "lorem", "ipsum", "cool right?"];
     if let Some(idx) = do_simple_menu("Simple Menu Dialog", &items) {
-        services()
-            .debug
-            .print(&format!("Selected '{}' at index {idx}", items[idx]));
+        debug.print(&format!("Selected '{}' at index {idx}", items[idx]));
     } else {
-        services().debug.print("Cancelled");
+        debug.print("Cancelled");
     }
 }
 
@@ -31,6 +33,10 @@ pub struct ManualStruct {
 }
 
 pub extern "C" fn manual_struct_editor() {
+    let Some(debug) = &services().debug else {
+        return;
+    };
+
     let mut item = ManualStruct { float: 0.0, int: 2 };
 
     let editor_desc = StructEditorDesc::new("My Struct Editor", 0);
@@ -53,9 +59,9 @@ pub extern "C" fn manual_struct_editor() {
     let item_ptr = &mut item as *mut _ as *mut c_void;
     let editor = construct_struct_editor(&editor_desc, &struct_desc, item_ptr);
     if editor.go(true) {
-        services().debug.print(&format!("{item:?}"));
+        debug.print(&format!("{item:?}"));
     } else {
-        services().debug.print("Cancelled");
+        debug.print("Cancelled");
     }
 }
 
@@ -73,6 +79,10 @@ pub struct AutoStruct {
 }
 
 pub extern "C" fn auto_struct_editor() {
+    let Some(debug) = &services().debug else {
+        return;
+    };
+
     let mut item = AutoStruct {
         float: 0.0,
         my_bool: true.into(),
@@ -81,9 +91,9 @@ pub extern "C" fn auto_struct_editor() {
     };
 
     if item.edit_struct() {
-        services().debug.print(&format!("{item:?}"));
+        debug.print(&format!("{item:?}"));
     } else {
-        services().debug.print("Cancelled");
+        debug.print("Cancelled");
     }
 }
 

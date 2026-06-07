@@ -8,18 +8,26 @@ pub struct TestScript {}
 
 impl TestScript {
     pub fn on_begin_script(&self, services: &Services, _: &sScrMsg, _: &mut sMultiParm) -> HRESULT {
-        let is_editor = services.version.is_editor();
-        let (major, minor) = services.version.get_version();
-        let app_name = services.version.get_app_name(true);
-        services.debug.print(&format!("is_editor: {is_editor}"));
-        services.debug.print(&format!("app_name: {app_name}"));
-        services.debug.print(&format!("version: {major}.{minor}"));
-        services.debug.print("Wowzers");
+        let (Some(debug), Some(version)) = (&services.debug, &services.version) else {
+            return HRESULT(1);
+        };
+
+        let is_editor = version.is_editor();
+        let (major, minor) = version.get_version();
+        let app_name = version.get_app_name(true);
+        debug.print(&format!("is_editor: {is_editor}"));
+        debug.print(&format!("app_name: {app_name}"));
+        debug.print(&format!("version: {major}.{minor}"));
+        debug.print("Wowzers");
         HRESULT(1)
     }
 
     pub fn on_turn_on(&self, services: &Services, _: &sScrMsg, _: &mut sMultiParm) -> HRESULT {
-        services.debug.print("Handling TurnOn in TestScript");
+        let Some(debug) = &services.debug else {
+            return HRESULT(1);
+        };
+
+        debug.print("Handling TurnOn in TestScript");
         HRESULT(1)
     }
 }
@@ -29,8 +37,12 @@ pub struct AnotherTestScript {}
 
 impl AnotherTestScript {
     pub fn on_turn_on(&self, services: &Services, _: &sScrMsg, _: &mut sMultiParm) -> HRESULT {
-        services.debug.print("Handling TurnOn in AnotherTestScript");
-        services.debug.command("run ./cmds/TogglePhys.cmd");
+        let Some(debug) = &services.debug else {
+            return HRESULT(1);
+        };
+
+        debug.print("Handling TurnOn in AnotherTestScript");
+        debug.command("run ./cmds/TogglePhys.cmd");
         HRESULT(1)
     }
 
@@ -40,9 +52,11 @@ impl AnotherTestScript {
         _: &sFrobMsg,
         _: &mut sMultiParm,
     ) -> HRESULT {
-        services
-            .debug
-            .print("Handling FrobWorldBegin in AnotherTestScript");
+        let Some(debug) = &services.debug else {
+            return HRESULT(1);
+        };
+
+        debug.print("Handling FrobWorldBegin in AnotherTestScript");
         HRESULT(1)
     }
 }

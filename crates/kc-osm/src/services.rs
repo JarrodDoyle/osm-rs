@@ -13,10 +13,10 @@ use crate::{IScriptMan, malloc, sMultiParm, sVector};
 static mut SERVICES: Option<&Services> = None;
 
 pub struct Services {
-    pub act_react: ActReactService,
-    pub debug: DebugService,
-    pub engine: EngineService,
-    pub version: VersionService,
+    pub act_react: Option<ActReactService>,
+    pub debug: Option<DebugService>,
+    pub engine: Option<EngineService>,
+    pub version: Option<VersionService>,
 }
 
 pub fn services() -> &'static Services {
@@ -25,24 +25,16 @@ pub fn services() -> &'static Services {
 
 pub(crate) fn services_init(script_manager: IScriptMan) {
     let services = Services {
-        act_react: ActReactService {
-            service: get_service(&script_manager),
-        },
-        debug: DebugService {
-            service: get_service(&script_manager),
-        },
-        engine: EngineService {
-            service: get_service(&script_manager),
-        },
-        version: VersionService {
-            service: get_service(&script_manager),
-        },
+        act_react: try_get_service(&script_manager).map(|s| ActReactService { service: s }),
+        debug: try_get_service(&script_manager).map(|s| DebugService { service: s }),
+        engine: try_get_service(&script_manager).map(|s| EngineService { service: s }),
+        version: try_get_service(&script_manager).map(|s| VersionService { service: s }),
     };
     unsafe { SERVICES = Some(Box::leak(Box::new(services))) };
 }
 
-fn get_service<T: Interface>(script_manager: &IScriptMan) -> T {
-    unsafe { script_manager.GetService(&T::IID).cast::<T>().unwrap() }
+fn try_get_service<T: Interface>(script_manager: &IScriptMan) -> Option<T> {
+    unsafe { script_manager.GetService(&T::IID).cast::<T>().ok() }
 }
 
 #[dark_service(ActReact)]

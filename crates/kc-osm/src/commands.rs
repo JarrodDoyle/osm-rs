@@ -102,7 +102,10 @@ impl Command {
 }
 
 fn get_command_ptrs() -> Option<(*mut c_int, *mut *const Command, *mut c_int)> {
-    let version = &services().version;
+    let Some(version) = &services().version else {
+        return None;
+    };
+
     let offsets = match (version.get_version(), version.is_editor() != 0) {
         ((1, 19), true) => (0x5f86fc, 0x5f8700, 0x5f8b00),
         ((1, 20), true) => (0x6023bc, 0x6023c0, 0x6027c0),

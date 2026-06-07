@@ -328,7 +328,9 @@ extern "stdcall" fn ScriptModuleInit(
         match module_init(&mut test_mod) {
             Ok(_) => test_mod.register(out_mod).into(),
             Err(e) => {
-                services().debug.print(&e);
+                if let Some(debug) = &services().debug {
+                    debug.print(&e);
+                }
                 false.into()
             }
         }
