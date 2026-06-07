@@ -1,36 +1,62 @@
 use std::result::Result;
 
-use kc_osm::*;
+use kc_osm::{messages::*, *};
 use std::str::FromStr;
 
 #[dark_script(BeginScript, TurnOn)]
 pub struct TestScript {}
 
 impl TestScript {
-    pub fn on_begin_script(&self, services: &Services, _msg: &sScrMsg) -> HRESULT {
-        let is_editor = services.version.is_editor();
-        let (major, minor) = services.version.get_version();
-        let app_name = services.version.get_app_name(true);
-        services.debug.print(&format!("is_editor: {is_editor}"));
-        services.debug.print(&format!("app_name: {app_name}"));
-        services.debug.print(&format!("version: {major}.{minor}"));
-        services.debug.print("Wowzers");
+    pub fn on_begin_script(&self, services: &Services, _: &sScrMsg, _: &mut sMultiParm) -> HRESULT {
+        let (Some(debug), Some(version)) = (&services.debug, &services.version) else {
+            return HRESULT(1);
+        };
+
+        let is_editor = version.is_editor();
+        let (major, minor) = version.get_version();
+        let app_name = version.get_app_name(true);
+        debug.print(&format!("is_editor: {is_editor}"));
+        debug.print(&format!("app_name: {app_name}"));
+        debug.print(&format!("version: {major}.{minor}"));
+        debug.print("Wowzers");
         HRESULT(1)
     }
 
-    pub fn on_turn_on(&self, services: &Services, _msg: &sScrMsg) -> HRESULT {
-        services.debug.print("Handling TurnOn in TestScript");
+    pub fn on_turn_on(&self, services: &Services, _: &sScrMsg, _: &mut sMultiParm) -> HRESULT {
+        let Some(debug) = &services.debug else {
+            return HRESULT(1);
+        };
+
+        debug.print("Handling TurnOn in TestScript");
         HRESULT(1)
     }
 }
 
-#[dark_script(TurnOn)]
+#[dark_script(TurnOn, FrobWorldBegin)]
 pub struct AnotherTestScript {}
 
 impl AnotherTestScript {
-    pub fn on_turn_on(&self, services: &Services, _msg: &sScrMsg) -> HRESULT {
-        services.debug.print("Handling TurnOn in AnotherTestScript");
-        services.debug.command("run ./cmds/TogglePhys.cmd");
+    pub fn on_turn_on(&self, services: &Services, _: &sScrMsg, _: &mut sMultiParm) -> HRESULT {
+        let Some(debug) = &services.debug else {
+            return HRESULT(1);
+        };
+
+        debug.print("Handling TurnOn in AnotherTestScript");
+        debug.command("run ./cmds/TogglePhys.cmd");
+        HRESULT(1)
+    }
+
+    pub fn on_frob_world_begin(
+        &self,
+        services: &Services,
+        _: &sFrobMsg,
+        _: &mut sMultiParm,
+    ) -> HRESULT {
+        let Some(debug) = &services.debug else {
+            return HRESULT(1);
+        };
+
+        debug.print("Handling FrobWorldBegin in AnotherTestScript");
         HRESULT(1)
     }
 }

@@ -23,6 +23,10 @@ dependencies = [
 ]
 
 [[package]]
+name = "dark-service-types"
+version = "0.0.1"
+
+[[package]]
 name = "dialog"
 version = "0.1.0"
 dependencies = [
@@ -53,6 +57,7 @@ dependencies = [
 name = "kc-osm-proc-macros"
 version = "0.0.1"
 dependencies = [
+ "dark-service-types",
  "heck",
  "proc-macro2",
  "quote",

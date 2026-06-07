@@ -1,6 +1,7 @@
 mod commands;
 pub mod dialogs;
 mod malloc;
+pub mod messages;
 mod services;
 
 use std::{
@@ -12,10 +13,48 @@ use std::{
 pub use crate::commands::{
     Command, CommandContext, CommandRegisterError, CommandType, get_all_command_infos,
 };
-use crate::commands::{deregister_command_sets, register_command_set};
 pub use crate::services::*;
+use crate::{
+    commands::{deregister_command_sets, register_command_set},
+    messages::sScrMsg,
+};
 pub use kc_osm_proc_macros::{EdittableStruct, dark_script};
 pub use windows::{Win32::System::Com::IMalloc, core::*};
+
+/// Dark Engine object identifier. Wraps a raw `i32` for type safety.
+///
+/// - Negative values are archetypes (e.g. Weapon = -30)
+/// - Positive values are concrete objects (e.g. a specific sword instance)
+/// - Zero means "no object" or "any" (wildcard in link queries)
+///
+/// Use `Option<ObjectId>` for APIs where zero means "not found".
+#[repr(transparent)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub struct ObjectId(pub i32);
+
+impl ObjectId {
+    /// Returns `true` if this is an archetype (negative ID).
+    #[must_use]
+    pub fn is_archetype(self) -> bool {
+        self.0 < 0
+    }
+
+    /// Returns `true` if this is a concrete object (positive ID).
+    #[must_use]
+    pub fn is_concrete(self) -> bool {
+        self.0 > 0
+    }
+}
+
+impl std::fmt::Display for ObjectId {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}", self.0)
+    }
+}
+
+#[repr(transparent)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub struct LinkId(pub i32);
 
 #[repr(C)]
 #[derive(Debug, Copy, Clone)]
@@ -89,22 +128,6 @@ pub struct sPersistentVtbl {
     pub Persistence: Option<unsafe extern "C" fn(arg1: *mut sPersistentVtbl) -> BOOL>,
     pub GetName:
         Option<unsafe extern "C" fn(arg1: *mut sPersistentVtbl) -> *const ::std::os::raw::c_char>,
-}
-
-#[repr(C)]
-#[derive(Copy, Clone, Debug)]
-pub struct sScrMsg {
-    pub lpVtbl: *mut IUnknown_Vtbl,
-    pub count: c_uint,
-    pub lpPersistentVtbl: *mut sPersistentVtbl,
-    pub from: c_int,
-    pub to: c_int,
-    pub message: *const c_char,
-    pub time: c_ulong,
-    pub flags: c_int,
-    pub data: sMultiParm,
-    pub data2: sMultiParm,
-    pub data3: sMultiParm,
 }
 
 #[interface("D00000D0-7B50-129F-8348-00AA00A82B51")]
@@ -305,7 +328,9 @@ extern "stdcall" fn ScriptModuleInit(
         match module_init(&mut test_mod) {
             Ok(_) => test_mod.register(out_mod).into(),
             Err(e) => {
-                services().debug.print(&e);
+                if let Some(debug) = &services().debug {
+                    debug.print(&e);
+                }
                 false.into()
             }
         }

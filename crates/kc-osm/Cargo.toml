@@ -2,7 +2,7 @@
 name = "kc-osm"
 version = "0.0.1"
 edition = "2024"
-authors = ["Jarrod Doyle <thejarroddoyle@gmail.com>"]
+authors = ["Jarrod Doyle <thejarroddoyle@gmail.com>", "Peter Wright <code@peter.works>"]
 license = "MIT OR Apache-2.0"
 repository = "https://github.com/JarrodDoyle/osm-rs"
 description = "Helper library for writing Dark Engine object script modules (OSMs)"
