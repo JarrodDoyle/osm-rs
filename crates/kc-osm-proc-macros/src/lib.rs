@@ -131,7 +131,7 @@ pub fn dark_script(attr: TokenStream, item: TokenStream) -> TokenStream {
 
         let msg_type = msg_type_for(&message);
         match_arms.extend(quote! {
-            #message => self.#message_func(services, #msg_type::from_base_msg(msg)),
+            #message => self.#message_func(services, #msg_type::from_base_msg(msg), reply),
         });
     }
 
@@ -150,7 +150,7 @@ pub fn dark_script(attr: TokenStream, item: TokenStream) -> TokenStream {
                 std::ffi::CString::from_str(#script_name).unwrap().into_raw()
             }
 
-            unsafe fn ReceiveMessage(&self, msg: &mut sScrMsg, _: &mut sMultiParm, _: i32) -> HRESULT {
+            unsafe fn ReceiveMessage(&self, msg: &mut sScrMsg, reply: &mut sMultiParm, _: i32) -> HRESULT {
                 let services = services();
                 let message_name = unsafe {
                     std::ffi::CStr::from_ptr(msg.message).to_str().unwrap()

@@ -7,7 +7,7 @@ use std::str::FromStr;
 pub struct TestScript {}
 
 impl TestScript {
-    pub fn on_begin_script(&self, services: &Services, _msg: &sScrMsg) -> HRESULT {
+    pub fn on_begin_script(&self, services: &Services, _: &sScrMsg, _: &mut sMultiParm) -> HRESULT {
         let is_editor = services.version.is_editor();
         let (major, minor) = services.version.get_version();
         let app_name = services.version.get_app_name(true);
@@ -18,7 +18,7 @@ impl TestScript {
         HRESULT(1)
     }
 
-    pub fn on_turn_on(&self, services: &Services, _msg: &sScrMsg) -> HRESULT {
+    pub fn on_turn_on(&self, services: &Services, _: &sScrMsg, _: &mut sMultiParm) -> HRESULT {
         services.debug.print("Handling TurnOn in TestScript");
         HRESULT(1)
     }
@@ -28,13 +28,18 @@ impl TestScript {
 pub struct AnotherTestScript {}
 
 impl AnotherTestScript {
-    pub fn on_turn_on(&self, services: &Services, _msg: &sScrMsg) -> HRESULT {
+    pub fn on_turn_on(&self, services: &Services, _: &sScrMsg, _: &mut sMultiParm) -> HRESULT {
         services.debug.print("Handling TurnOn in AnotherTestScript");
         services.debug.command("run ./cmds/TogglePhys.cmd");
         HRESULT(1)
     }
 
-    pub fn on_frob_world_begin(&self, services: &Services, _msg: &sFrobMsg) -> HRESULT {
+    pub fn on_frob_world_begin(
+        &self,
+        services: &Services,
+        _: &sFrobMsg,
+        _: &mut sMultiParm,
+    ) -> HRESULT {
         services
             .debug
             .print("Handling FrobWorldBegin in AnotherTestScript");
